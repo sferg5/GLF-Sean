@@ -34,18 +34,23 @@ import { FABRICS, PACE, WALL, porosityOf, predict } from '../lib/perforation'
  * without someone who owns the actual knit reading it first.
  */
 
-const TITLE = 'better air flow. cooler feel.'
+const TITLE = 'the faster you go, the cooler the feel.'
 
 /**
  * The axis, said once for both channels.
  *
- * Both are the same geometry, so naming it twice would be labelling the picture rather than the
- * diagram. Same two marks and the same `WALL` as the moisture bench test upstairs, deliberately: a
- * reader who has seen one cross-section on this page already knows which end is the skin.
+ * Both channels are the same geometry, so naming it twice would be labelling the picture rather
+ * than the diagram. The same `WALL` as the moisture bench test upstairs, deliberately: a reader who
+ * has seen one cross-section on this page already knows which end is the skin.
+ *
+ * Three marks rather than two. Naming only the outside left the far edge to be inferred, and the
+ * whole reading of the section turns on knowing that the air on the right is the air held against
+ * you — the microclimate is the subject, so it gets a name.
  */
 const MARKS = [
   { at: 0, label: 'outside air', align: 'start' },
   { at: WALL, label: 'the knit', align: 'centre' },
+  { at: 1, label: 'inside air', align: 'end' },
 ] as const
 
 const LAYER_NAMES: { key: keyof Layers; label: string }[] = [
@@ -177,8 +182,11 @@ export function Perforation() {
             changes the diagram above it and the numbers below it, and standing between the two is
             how a control says so. */}
         <div className="tunnel__controls tunnel__inset">
+          {/* The instruction, not a field name. With this above it the slider's own inline `pace`
+              label was the same word twice in two lines, so the control is just the track and its
+              value now. */}
+          <p className="tunnel__sublabel">set your pace.</p>
           <label className="tunnel__pace">
-            <span>pace</span>
             <input
               type="range"
               min={PACE.min}
@@ -238,9 +246,10 @@ export function Perforation() {
 /**
  * One channel: the canvases, and the one line that says which knit it is.
  *
- * The label is under the picture rather than over it — laid on top it sits in the flow field, and
- * the flow field is the thing being read. Its open area is beside it because that is the single
- * number that explains the difference between the two pictures.
+ * Both labels sit inside the window, in white, in the two bottom corners — the knit on the left
+ * where the approach flow is quiet and dark, its reading on the right over the microclimate the
+ * reading is about. Under the picture they cost two bands of page between the channels and pushed
+ * the two windows apart, which is the last thing a side-by-side comparison wants.
  */
 function Channel({
   spec,
@@ -267,15 +276,13 @@ function Channel({
             {hint}
           </p>
         )}
-      </div>
-      <p className="tunnel__knit tunnel__inset">
-        <b>
+        <p className="tunnel__knit">
           {spec.name.toLowerCase()} <em>{spec.tag}</em>
-        </b>
-        <span>
+        </p>
+        <p className="tunnel__read">
           {open.toFixed(0)}% open · {rise.toFixed(1)} °C over ambient
-        </span>
-      </p>
+        </p>
+      </div>
     </article>
   )
 }

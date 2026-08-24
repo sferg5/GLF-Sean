@@ -4002,7 +4002,7 @@ button {
   align-content: center;
   /* Block padding only. The type takes the page's own inset per element; the channel takes none,
      which is what lets it bleed. */
-  padding: clamp(40px, 7vh, 96px) 0;
+  padding: clamp(32px, 5.5vh, 78px) 0;
   background: var(--page);
   color: var(--page-ink);
 }
@@ -4013,7 +4013,7 @@ button {
 .tunnel__frame {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(12px, 2svh, 26px);
+  gap: clamp(10px, 1.7svh, 22px);
 }
 
 /* Everything that is type takes the prose section's horizontal inset, so the left edge of this
@@ -4076,6 +4076,12 @@ button {
   left: clamp(20px, 4vw, 72px);
 }
 
+/* The far end takes the type's own inset rather than a percentage: flush against a full-bleed
+   edge, its trailing letter-space pushes the final glyph off the window. */
+.tunnel__mark[data-align='end'] {
+  right: clamp(20px, 4vw, 72px);
+}
+
 /* The channels
    Two of them, stacked. The window is dark and full bleed; the line under each says which knit it
    is. No radius: a rounded corner on a full-bleed element is a card pretending to be a window, and
@@ -4088,15 +4094,15 @@ button {
 }
 
 .tunnel__channel {
-  display: grid;
-  gap: 7px;
+  display: block;
 }
 
 .tunnel__window {
   position: relative;
-  /* Half what one channel had, near enough — two of these plus their labels have to sit in the
-     same screen the single channel used to have to itself. */
-  height: clamp(112px, 21svh, 250px);
+  /* Taller than the first pass, which is affordable now the labels are inside it rather than in a
+     band of page underneath — moving them in bought back two rows and the height went to the
+     pictures, which are the argument. */
+  height: clamp(140px, 24svh, 290px);
   overflow: clip;
   background: #0a0908;
   cursor: crosshair;
@@ -4132,10 +4138,11 @@ button {
    both would be furniture. It goes as soon as it has been obeyed. */
 .tunnel__hint {
   position: absolute;
-  inset: auto 0 8px;
+  /* Top left, which is the quietest corner of the picture — the approach flow is uniform and dark
+     there. The two bottom corners are the labels' now. */
+  inset: clamp(8px, 1.4svh, 14px) auto auto clamp(20px, 4vw, 72px);
   z-index: 1;
   margin: 0;
-  text-align: center;
   font-size: clamp(0.78rem, 0.9vw, 0.88rem);
   color: rgba(240, 238, 235, 0.34);
   pointer-events: none;
@@ -4146,28 +4153,41 @@ button {
   opacity: 0;
 }
 
-/* Which knit, and what it costs. Under the window rather than laid on it: on top it sits in the
-   flow field, and the flow field is the thing being read. */
-.tunnel__knit {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: clamp(12px, 2vw, 26px);
+/* Which knit, and what it costs — both inside the window, in the two bottom corners.
+   The shadow rather than a scrim: a gradient band across the foot of the channel would cover the
+   microclimate, which is the part being read. A shadow costs nothing and only darkens what is
+   directly under a glyph.
+   ------------------------------------------------------------------ */
+.tunnel__knit,
+.tunnel__read {
+  position: absolute;
+  bottom: clamp(8px, 1.4svh, 14px);
+  z-index: 1;
   margin: 0;
   font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  color: var(--page-dim);
+  line-height: 1.3;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(6, 5, 8, 0.85);
+  pointer-events: none;
 }
 
-.tunnel__knit b {
-  font-weight: var(--weight-heading);
-  color: var(--page-ink);
+.tunnel__knit {
+  left: clamp(20px, 4vw, 72px);
+  color: rgba(255, 255, 255, 0.74);
 }
 
-/* The version. The two channels are the same garment, so this word is the only thing telling them
-   apart and it earns the accent. */
+/* The version. Both channels are the same garment, so this word is the only thing telling them
+   apart — it carries the weight and the full white, and the product name sits back from it. */
 .tunnel__knit em {
   font-style: normal;
-  color: #ee3b33;
+  font-weight: var(--weight-heading);
+  color: #fff;
+}
+
+.tunnel__read {
+  right: clamp(20px, 4vw, 72px);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* The controls
@@ -4179,24 +4199,29 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(14px, 2.4vw, 34px);
+  gap: clamp(8px, 1.4svh, 14px) clamp(14px, 2.4vw, 34px);
+}
+
+/* An instruction rather than a field name, so it is set as a line of the page's voice and not as a
+   label: full ink, lower case, its own row above the control it is talking about. */
+.tunnel__sublabel {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: clamp(0.95rem, 1.2vw, 1.12rem);
+  letter-spacing: -0.01em;
+  color: var(--page-ink);
 }
 
 /* Built for a finger. It was an 11px label beside a 2px track — a mouse's control — and this is
    going on a display somebody walks up to. */
 .tunnel__pace {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: clamp(12px, 1.8vw, 24px);
   cursor: pointer;
   user-select: none;
   font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-}
-
-.tunnel__pace > span {
-  color: var(--page-dim);
-  white-space: nowrap;
 }
 
 .tunnel__pace > output {
@@ -4338,9 +4363,13 @@ button {
     gap: 12px;
   }
 
-  .tunnel__knit {
-    flex-direction: column;
-    gap: 1px;
+  /* The two corner labels would meet in the middle on a phone, so the reading goes under the knit
+     rather than opposite it. */
+  .tunnel__read {
+    right: auto;
+    left: clamp(20px, 4vw, 72px);
+    bottom: calc(clamp(8px, 1.4svh, 14px) + 1.35em);
+    text-align: left;
   }
 }
 
