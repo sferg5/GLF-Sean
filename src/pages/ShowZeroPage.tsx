@@ -1,9 +1,16 @@
 import { Prose, type ProseCopy } from '../components/Prose'
-import { Fabric } from '../components/Fabric'
+import { Perforation } from '../components/Perforation'
 import { ShowZeroHero } from '../showzero/ShowZeroHero'
 
 /**
  * Show zero. Three blocks: the moisture bench test, the words, and the airflow bench test.
+ *
+ * **The airflow block changed instrument.** It was `components/Fabric.tsx` — two fabrics side by
+ * side in the same wind, particles counted through each — and it is now
+ * `components/Perforation.tsx`, which solves the flow field against one specimen at a time and
+ * reads its figures off it. The old component and its model (`lib/air.ts`, `lab/WindTunnel.tsx`)
+ * are still in the tree and still tested by `scripts/air.sh`; nothing renders them. `scripts/fabric.mjs`
+ * asserts the old markup and needs rewriting against `.tunnel`.
  * Default export because the page is a `lazy()` chunk — it's the boundary that keeps three.js
  * out of the shoe bundle.
  *
@@ -54,7 +61,7 @@ export default function ShowZeroPage() {
           decision somebody made about a photograph that isn't on this page. */}
       <Prose copy={KNIT_PROSE} wall="page" />
 
-      <Fabric />
+      <Perforation />
     </main>
   )
 }
