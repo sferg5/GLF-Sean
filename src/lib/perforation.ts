@@ -1,5 +1,5 @@
 /**
- * Fast and Free, twice, in the same wind — and what it costs the skin.
+ * ShowZero, twice, in the same wind — and what it costs the skin.
  *
  * This is the physics and nothing else. `lab/Perforation.tsx` is the picture and the loop,
  * `components/Perforation.tsx` is the section. Same split as `lib/air.ts` /
@@ -23,7 +23,7 @@
  * because the flow moved.
  *
  * **The two specimens are the ones `lib/air.ts` already committed to.** 18% open and 44% open, the
- * current Fast and Free knit and the new one. Those numbers are in that file, they are what
+ * current ShowZero knit and v2. Those numbers are in that file, they are what
  * `scripts/air.sh` asserts against, and there is no reason for two models of the same pair of
  * fabrics to disagree about how open they are.
  *
@@ -43,7 +43,8 @@ export type FabricSpec = {
   id: FabricId
   /** The product. Both channels are the same garment, which is the entire argument. */
   name: string
-  /** Which version. Lower case at the point of use — the page's voice, not this file's business. */
+  /** Which version. Empty on the original — the name alone is the label, the way the hero's own
+   * swatch tags run ShowZero / ShowZero v2. */
   tag: string
   /** What changed, in a handful of words. */
   note: string
@@ -73,8 +74,8 @@ export type FabricSpec = {
 export const FABRICS: readonly [FabricSpec, FabricSpec] = [
   {
     id: 'now',
-    name: 'Fast and Free',
-    tag: 'current',
+    name: 'ShowZero',
+    tag: '',
     note: 'today’s knit',
     dia: 0.395,
     pitch: 2.5,
@@ -82,8 +83,8 @@ export const FABRICS: readonly [FabricSpec, FabricSpec] = [
   },
   {
     id: 'next',
-    name: 'Fast and Free',
-    tag: 'new',
+    name: 'ShowZero',
+    tag: 'v2',
     note: 'engineered open knit',
     dia: 0.61,
     pitch: 1.4,

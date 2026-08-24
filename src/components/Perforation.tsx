@@ -4,7 +4,7 @@ import { type ChannelRefs, type Layers, usePerforation } from '../lab/Perforatio
 import { FABRICS, PACE, WALL, porosityOf, predict } from '../lib/perforation'
 
 /**
- * Fast and Free, twice, in the same wind.
+ * ShowZero, twice, in the same wind.
  *
  * Two channels seen in cross-section, stacked and full bleed: **outside air at the left edge, skin
  * at the right**, the knit standing across each. Today's knit on top, the new one below. Same air
@@ -54,8 +54,8 @@ const MARKS = [
 ] as const
 
 const LAYER_NAMES: { key: keyof Layers; label: string }[] = [
-  { key: 'particles', label: 'streaklines' },
-  { key: 'glyphs', label: 'glyphs' },
+  { key: 'particles', label: 'wind' },
+  { key: 'glyphs', label: 'flow' },
   { key: 'heat', label: 'heat' },
 ]
 
@@ -226,7 +226,7 @@ export function Perforation() {
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
-          Two cross-sections of Fast and Free in the same wind, outside air on the left and skin on
+          Two cross-sections of the ShowZero knit in the same wind, outside air on the left and skin on
           the right, with the knit standing across each channel a third of the way in. Colour is air
           temperature: the body warms the air held against the skin, and airflow through the knit is
           what carries that warmth away. The current knit is{' '}
@@ -276,7 +276,8 @@ function Channel({
           </p>
         )}
         <p className="tunnel__knit">
-          {spec.name.toLowerCase()} <em>{spec.tag}</em>
+          {spec.name}
+          {spec.tag && <em> {spec.tag}</em>}
         </p>
         <p className="tunnel__read">
           {open.toFixed(0)}% open · {rise.toFixed(1)} °C over ambient

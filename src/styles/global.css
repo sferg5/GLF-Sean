@@ -4173,15 +4173,13 @@ button {
 
 .tunnel__knit {
   left: clamp(20px, 4vw, 72px);
-  color: rgba(255, 255, 255, 0.74);
+  font-weight: var(--weight-heading);
 }
 
-/* The version. Both channels are the same garment, so this word is the only thing telling them
-   apart — it carries the weight and the full white, and the product name sits back from it. */
+/* The version. The name carries the weight now that it is the whole label on the first channel;
+   the tag matches it, so "ShowZero v2" reads as one wordmark rather than a name and an aside. */
 .tunnel__knit em {
   font-style: normal;
-  font-weight: var(--weight-heading);
-  color: #fff;
 }
 
 .tunnel__read {
