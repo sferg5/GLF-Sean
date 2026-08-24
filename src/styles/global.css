@@ -4022,16 +4022,29 @@ button {
   padding-inline: clamp(20px, 4vw, 72px);
 }
 
-/* The statement, on the same clamp as `.faq__lead` and `.journey__lead` — this is the third of
-   the three display lines on the page and there is no reason for it to be a different size. */
+/* The statement, on `.sz__title`'s exact type — the hero's "same sweat. different fabric." is the
+   line this one answers, and two headlines on one page that answer each other should be set the
+   same. It was on the `.faq__lead` / `.journey__lead` clamp, which tops out a full rem larger and
+   made this section shout over the hero it follows.
+
+   Weight and lower case come from the base `h1`–`h4` rule and are not repeated here, which is why
+   this block is only four properties: matching `.sz__title` means matching what it actually
+   declares, not restating what it inherits. */
 .tunnel__title {
-  margin: 0;
-  max-width: 20ch;
-  font-size: clamp(1.9rem, 4.4vw, 4.15rem);
-  font-weight: var(--weight-heading);
-  text-transform: lowercase;
+  /* Centred, like the hero's. `.sz__title` inherits its centring from `.sz__head`; this section
+     has no such wrapper, so the heading centres itself — `margin-inline: auto` to centre the box
+     and `text-align` to centre the lines inside it, which are two different things and a headline
+     that wraps needs both.
+
+     The measure is what makes `text-wrap: balance` mean anything here: unbounded, this sets as one
+     long line on a wide window and balance has nothing to do. At 30ch it holds one line on a
+     laptop and breaks into two even ones below that. */
+  margin: 0 auto;
+  max-width: 30ch;
+  font-size: clamp(1.9rem, 3.4vw, 3.2rem);
   line-height: 1.06;
   letter-spacing: -0.021em;
+  text-align: center;
   text-wrap: balance;
 }
 

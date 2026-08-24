@@ -42,7 +42,7 @@ import {
  * here because these numbers look like instrument readings.
  */
 
-const TITLE = 'find your flow.'
+const TITLE = 'better air flow. cooler feel.'
 
 /**
  * The axis, said once.
