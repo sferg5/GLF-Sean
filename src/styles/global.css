@@ -4038,8 +4038,14 @@ button {
 
      The measure is what makes `text-wrap: balance` mean anything here: unbounded, this sets as one
      long line on a wide window and balance has nothing to do. At 30ch it holds one line on a
-     laptop and breaks into two even ones below that. */
-  margin: 0 auto;
+     laptop and breaks into two even ones below that.
+
+     The margin under it is the statement's own, on top of the frame's row gap. The frame spaces
+     every row evenly, which is right for the figures, the slider and the pictures — they are one
+     instrument — but the headline is not a row of the instrument, and at the shared gap it sat as
+     close to the figures as the figures sit to the slider. Display type needs more air below it
+     than body rows give each other. */
+  margin: 0 auto clamp(14px, 3.2svh, 40px);
   max-width: 30ch;
   font-size: clamp(1.9rem, 3.4vw, 3.2rem);
   line-height: 1.06;
