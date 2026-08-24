@@ -57,6 +57,40 @@ export function SiteNav() {
   const toggle = useRef<HTMLButtonElement>(null)
 
   /**
+   * Hidden while reading, back the moment you reach for it.
+   *
+   * Scroll down and the bar gets out of the way — it floats over full-bleed photography and
+   * simulations, and a pill parked over the shot you are trying to read is furniture. Scroll up,
+   * which is the gesture of somebody looking for something, and it returns.
+   *
+   * Two guards keep it from being twitchy. Direction has to *accumulate*: one flick of a trackpad
+   * overshoots by a few pixels on settle, so a direction change only counts after 12px of travel
+   * the same way — same-direction deltas add up, a reversal starts the count over. And the top of
+   * the page is exempt: within the first screen's opening the bar is part of the composition, not
+   * an obstruction, so it never hides there and always reappears on the way back.
+   */
+  const [hidden, setHidden] = useState(false)
+  useEffect(() => {
+    let lastY = window.scrollY
+    let run = 0
+    const onScroll = () => {
+      const y = window.scrollY
+      const dy = y - lastY
+      lastY = y
+      if (y < 80) {
+        run = 0
+        setHidden(false)
+        return
+      }
+      run = (dy >= 0) === (run >= 0) ? run + dy : dy
+      if (run > 12) setHidden(true)
+      else if (run < -12) setHidden(false)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  /**
    * Escape closes and hands focus back to the button that opened it, because that's where
    * the keyboard was — closing to nowhere drops the caret at the top of the document.
    *
@@ -84,7 +118,7 @@ export function SiteNav() {
   }, [open])
 
   return (
-    <nav className="sitenav" aria-label="Main">
+    <nav className="sitenav" aria-label="Main" data-hidden={hidden && !open}>
       <div className="sitenav__bar" ref={bar} data-open={open}>
         <div className="sitenav__row">
           <a className="sitenav__logo" href="#top" aria-label="lululemon, back to top">

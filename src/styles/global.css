@@ -315,6 +315,26 @@ button {
   justify-content: center;
   padding: 0 12px;
   pointer-events: none;
+  transition: translate 0.34s var(--ease-out-expo);
+}
+
+/* Hidden is *away*, not gone: translated clear of the viewport and left in the DOM, so the fold,
+   the focus order and find-in-page are all exactly what they were. The overshoot past -100%
+   covers the 12px inset and the pill's own shadow. */
+.sitenav[data-hidden='true'] {
+  translate: 0 calc(-100% - 24px);
+}
+
+/* Reaching for it with the keyboard counts as reaching for it: a tab into the hidden bar brings
+   it back, because focus landing on a control nobody can see is worse than the bar returning. */
+.sitenav[data-hidden='true']:focus-within {
+  translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sitenav {
+    transition: none;
+  }
 }
 
 /**
