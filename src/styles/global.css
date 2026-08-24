@@ -4040,12 +4040,10 @@ button {
      long line on a wide window and balance has nothing to do. At 30ch it holds one line on a
      laptop and breaks into two even ones below that.
 
-     The margin under it is the statement's own, on top of the frame's row gap. The frame spaces
-     every row evenly, which is right for the figures, the slider and the pictures — they are one
-     instrument — but the headline is not a row of the instrument, and at the shared gap it sat as
-     close to the figures as the figures sit to the slider. Display type needs more air below it
-     than body rows give each other. */
-  margin: 0 auto clamp(14px, 3.2svh, 40px);
+     The display margin it briefly carried moved to the units pill as symmetric margins — with the
+     pill between this and the figures, extra space under the headline alone pushed the pill off
+     centre in its own slot. */
+  margin: 0 auto clamp(4px, 1svh, 12px);
   max-width: 30ch;
   font-size: clamp(1.9rem, 3.4vw, 3.2rem);
   line-height: 1.06;
@@ -4277,7 +4275,7 @@ button {
   margin-top: -7px;
   border: 0;
   border-radius: 50%;
-  background: #ee3b33;
+  background: var(--page-ink);
 }
 
 .tunnel__pace input[type='range']::-moz-range-thumb {
@@ -4285,7 +4283,7 @@ button {
   height: 15px;
   border: 0;
   border-radius: 50%;
-  background: #ee3b33;
+  background: var(--page-ink);
 }
 
 .tunnel__pace input[type='range']:focus {
@@ -4294,12 +4292,12 @@ button {
 
 .tunnel__pace input[type='range']:focus-visible::-webkit-slider-thumb,
 .tunnel__pace input[type='range']:hover::-webkit-slider-thumb {
-  box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
+  box-shadow: 0 0 0 5px rgba(20, 16, 15, 0.12);
 }
 
 .tunnel__pace input[type='range']:focus-visible::-moz-range-thumb,
 .tunnel__pace input[type='range']:hover::-moz-range-thumb {
-  box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
+  box-shadow: 0 0 0 5px rgba(20, 16, 15, 0.12);
 }
 
 .tunnel__layers {
@@ -4320,8 +4318,10 @@ button {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: fit-content;
-  margin-inline: auto;
-  padding: 3px;
+  /* Tucked toward the track it re-labels: the slider row is one thin line, and at the frame's full
+     gap the pill floated between the control and the axis belonging to neither. */
+  margin: calc(-1 * clamp(2px, 0.6svh, 8px)) auto 0;
+  padding: 2.5px;
   border-radius: 100px;
   background: rgba(20, 16, 15, 0.07);
 }
@@ -4329,8 +4329,8 @@ button {
 .tunnel__units::before {
   content: '';
   position: absolute;
-  inset: 3px auto 3px 3px;
-  width: calc(50% - 3px);
+  inset: 2.5px auto 2.5px 2.5px;
+  width: calc(50% - 2.5px);
   border-radius: 100px;
   background: #fff;
   box-shadow:
@@ -4346,13 +4346,13 @@ button {
 .tunnel__unit {
   position: relative;
   z-index: 1;
-  padding: 7px 20px;
+  padding: 4.5px 14px;
   border: 0;
   border-radius: 100px;
   background: none;
   cursor: pointer;
   font: inherit;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  font-size: clamp(0.74rem, 0.85vw, 0.85rem);
   text-transform: lowercase;
   color: var(--page-dim);
   transition: color 0.18s var(--ease-out-quad);

@@ -162,22 +162,6 @@ export function Perforation() {
       <div className="tunnel__frame">
         <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
-        {/* Units, above the figures they re-express — a segmented pill, with the thumb slid by
-            the container's data attribute so the two buttons stay plain text over it. */}
-        <div className="tunnel__units" data-units={units}>
-          {(['metric', 'imperial'] as const).map((u) => (
-            <button
-              key={u}
-              type="button"
-              className="tunnel__unit"
-              aria-pressed={units === u}
-              onClick={() => setUnits(u)}
-            >
-              {u}
-            </button>
-          ))}
-        </div>
-
         {/* The verdict, directly under the statement — three figures, and the first is live.
             The pace leads because it is the reader's own number: the two comparisons to its right
             are what that pace costs on one knit and buys on the other. */}
@@ -209,6 +193,22 @@ export function Perforation() {
           />
         </label>
 
+        {/* Units, under the control — a segmented pill, with the thumb slid by the container's
+            data attribute so the two buttons stay plain text over it. */}
+        <div className="tunnel__units" data-units={units}>
+          {(['metric', 'imperial'] as const).map((u) => (
+            <button
+              key={u}
+              type="button"
+              className="tunnel__unit"
+              aria-pressed={units === u}
+              onClick={() => setUnits(u)}
+            >
+              {u}
+            </button>
+          ))}
+        </div>
+
         <div className="tunnel__axis" aria-hidden="true">
           {MARKS.map((mark) => (
             <span
@@ -239,8 +239,8 @@ export function Perforation() {
           <div className="tunnel__between">
             <p className="tunnel__between-label">about the perforations</p>
             <p className="tunnel__between-lead">
-              more air is not one bigger hole — it is thirteen finer perforations where today's
-              knit cuts seven.
+              showzero v2 cuts its perforations on a 1.4 mm pitch instead of 2.5 — thirteen jets
+              across the channel where today's knit has seven.
             </p>
           </div>
 
