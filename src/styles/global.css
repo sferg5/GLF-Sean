@@ -4096,7 +4096,15 @@ button {
 
 .tunnel__channels {
   display: grid;
-  gap: clamp(10px, 1.8svh, 22px);
+  /* No gap: the two windows meet, and the pair reads as one instrument with two chambers rather
+     than two separate diagrams. The corner labels inside each window keep the boundary legible —
+     and a 1px hairline on the seam itself says "one machine, two chambers" better than a band of
+     page ever did. */
+  gap: 0;
+}
+
+.tunnel__channel + .tunnel__channel .tunnel__window {
+  border-top: 1px solid rgba(226, 221, 210, 0.18);
 }
 
 .tunnel__channel {
@@ -4106,9 +4114,10 @@ button {
 .tunnel__window {
   position: relative;
   /* Taller than the first pass, which is affordable now the labels are inside it rather than in a
-     band of page underneath — moving them in bought back two rows and the height went to the
-     pictures, which are the argument. */
-  height: clamp(140px, 24svh, 290px);
+     band of page underneath — and then raised again by a fifth on review. Each stop of this clamp
+     is 1.2× the last version's: the pictures are the argument, and the page around them had more
+     spare height than the argument did. */
+  height: clamp(168px, 28.8svh, 348px);
   overflow: clip;
   background: #0a0908;
   cursor: crosshair;
