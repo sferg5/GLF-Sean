@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shoe X-Ray — scroll transitions</title>
+    <link rel="preload" as="image" href="/shoe/start.png" fetchpriority="high" />
+    <link rel="preload" as="image" href="/shoe/end.png" fetchpriority="high" />
+    <!-- The stage waits on both annotation faces before it draws, so they're on the
+         critical path and want to be in flight before the stylesheet asks for them.
+         `crossorigin` is required on font preloads even same-origin: fonts fetch in CORS
+         mode, and without it the preload lands in a different cache partition and the file
+         is fetched twice.
+
+         The hand goes first. It's a third of the mono's size and it's what the paper
+         sheet's labels are set in, so it's the one whose absence would move the most
+         geometry. -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/architects-daughter-latin.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/saans-mono-regular.woff2"
+      crossorigin
+    />
+    <!-- Lululemon Saans Regular sets every word of body and chrome on the page, including
+         the topbar that's on screen at first paint — so it's as much on the critical path
+         as the mono above it. -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/lululemon-saans-regular.woff2"
+      crossorigin
+    />
+    <!-- SemiBold sets every heading. The first one is a viewport down rather than in the
+         first frame, but it's `font-display: swap`, and a heading that re-sets from
+         Helvetica to Saans mid-scroll is exactly what the preload is for. -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/lululemon-saans-semibold.woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

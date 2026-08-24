@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Create a folder
+mkdir -p my-new-folder
+
+# Create a file inside the folder
+touch my-new-folder/my-file.txt
+
+# Put some text in the file
+echo "Hello from GitHub!" > my-new-folder/my-file.txt
