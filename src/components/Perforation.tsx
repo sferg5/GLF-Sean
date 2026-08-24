@@ -125,11 +125,32 @@ export function Perforation() {
    */
   const showing = useInView(section, { amount: 0.2 })
 
+  /**
+   * Fullscreen, tracked here rather than only in the channel that owns the button, because it
+   * gates the loop: inside native fullscreen only the fullscreen element paints, and an
+   * IntersectionObserver watching the section is entitled to say the section left the viewport —
+   * which would stop the very simulation the reader just enlarged. `showing || full` keeps it
+   * running. It also forces the rebuild: the effect re-runs when this flips, and the rebuild
+   * measures the host at its new size.
+   */
+  const [nativeFull, setNativeFull] = useState(false)
+  const [fallbackFull, setFallbackFull] = useState(false)
+  useEffect(() => {
+    const doc = document as Document & { webkitFullscreenElement?: Element | null }
+    const onChange = () => setNativeFull(!!(document.fullscreenElement ?? doc.webkitFullscreenElement))
+    document.addEventListener('fullscreenchange', onChange)
+    document.addEventListener('webkitfullscreenchange', onChange as EventListener)
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange)
+      document.removeEventListener('webkitfullscreenchange', onChange as EventListener)
+    }
+  }, [])
+
   usePerforation({
     channels,
     pace: paceRef,
     layers: layerRef,
-    showing,
+    showing: showing || nativeFull || fallbackFull,
     reduced,
   })
 
@@ -230,6 +251,7 @@ export function Perforation() {
             flow={nowFlow}
             glyph={nowGlyph}
             hint="drag inside to disturb the flow"
+            onFallbackFull={setFallbackFull}
           />
 
           {/* The band between the chambers, and it earns its height by saying what changed.
@@ -250,6 +272,7 @@ export function Perforation() {
             rise={degrees(figures.rise[1])}
             flow={nextFlow}
             glyph={nextGlyph}
+            onFallbackFull={setFallbackFull}
           />
         </div>
 
@@ -301,6 +324,7 @@ function Channel({
   flow,
   glyph,
   hint,
+  onFallbackFull,
 }: {
   spec: (typeof FABRICS)[number]
   open: number
@@ -309,10 +333,71 @@ function Channel({
   flow: React.RefObject<HTMLCanvasElement | null>
   glyph: React.RefObject<HTMLCanvasElement | null>
   hint?: string
+  /** Reports CSS-overlay fullscreen up to the parent, which gates the loop on it. */
+  onFallbackFull: (on: boolean) => void
 }) {
+  const host = useRef<HTMLDivElement>(null)
+  const [full, setFull] = useState(false)
+  const [fallback, setFallback] = useState(false)
+
+  /* Native fullscreen is owned by the document, not by this button — Escape and the browser's own
+     chrome both exit it — so the icon follows the document's state rather than assuming the click
+     was the only way out. */
+  useEffect(() => {
+    const doc = document as Document & { webkitFullscreenElement?: Element | null }
+    const onChange = () =>
+      setFull((document.fullscreenElement ?? doc.webkitFullscreenElement) === host.current)
+    document.addEventListener('fullscreenchange', onChange)
+    document.addEventListener('webkitfullscreenchange', onChange as EventListener)
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange)
+      document.removeEventListener('webkitfullscreenchange', onChange as EventListener)
+    }
+  }, [])
+
+  /* The fallback exists for the browsers with no element fullscreen — iPhones, mainly, which is
+     not a hypothetical audience for this page. Same interaction, a fixed overlay instead of the
+     API, and Escape is wired by hand because nothing native is there to do it. */
+  useEffect(() => {
+    if (!fallback) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFallback(false)
+        onFallbackFull(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fallback, onFallbackFull])
+
+  const toggle = () => {
+    const el = host.current as
+      | (HTMLDivElement & { webkitRequestFullscreen?: () => void })
+      | null
+    if (!el) return
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null
+      webkitExitFullscreen?: () => void
+    }
+    const supported = el.requestFullscreen ?? el.webkitRequestFullscreen
+    if (supported) {
+      if (document.fullscreenElement ?? doc.webkitFullscreenElement) {
+        ;(document.exitFullscreen ?? doc.webkitExitFullscreen)?.call(document)
+      } else {
+        supported.call(el)
+      }
+    } else {
+      const next = !fallback
+      setFallback(next)
+      onFallbackFull(next)
+    }
+  }
+
+  const isFull = full || fallback
+
   return (
     <article className="tunnel__channel" data-knit={spec.id}>
-      <div className="tunnel__window">
+      <div className="tunnel__window" ref={host} data-full={fallback || undefined}>
         <canvas className="tunnel__canvas" ref={flow} aria-hidden="true" />
         <canvas className="tunnel__canvas" ref={glyph} aria-hidden="true" />
         {hint && (
@@ -327,6 +412,45 @@ function Channel({
         <p className="tunnel__read">
           {open.toFixed(0)}% open · {rise} over ambient
         </p>
+        {/* Stops its own pointerdown: the window's drag handler sits on the host, and a click on
+            the expand button should not also stir the corner of the flow. */}
+        <button
+          type="button"
+          className="tunnel__expand"
+          aria-pressed={isFull}
+          aria-label={isFull ? 'Exit full screen' : 'View full screen'}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={toggle}
+        >
+          <svg
+            data-icon="open"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9.75 2.75h3.5v3.5" />
+            <path d="M13.25 2.75 9.5 6.5" />
+            <path d="M6.25 13.25h-3.5v-3.5" />
+            <path d="M2.75 13.25 6.5 9.5" />
+          </svg>
+          <svg
+            data-icon="close"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3.25 3.25l9.5 9.5" />
+            <path d="M12.75 3.25l-9.5 9.5" />
+          </svg>
+        </button>
       </div>
     </article>
   )

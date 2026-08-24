@@ -4197,6 +4197,79 @@ button {
   opacity: 0;
 }
 
+/* The expand control, top right — the corner the hint and the labels leave free.
+   One button, two glyphs stacked in the same grid cell: the expand arrows rotate out as the X
+   rotates in, which reads as a morph without the SVG paths having to actually interpolate.
+   ------------------------------------------------------------------ */
+
+.tunnel__expand {
+  position: absolute;
+  top: clamp(10px, 1.6svh, 16px);
+  right: clamp(20px, 4vw, 72px);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(10, 9, 8, 0.42);
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  transition:
+    background-color 0.15s var(--ease-out-quad),
+    color 0.15s var(--ease-out-quad);
+}
+
+.tunnel__expand:hover {
+  background: rgba(10, 9, 8, 0.68);
+  color: #fff;
+}
+
+.tunnel__expand:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+}
+
+.tunnel__expand svg {
+  grid-area: 1 / 1;
+  width: 15px;
+  height: 15px;
+  transition:
+    opacity 0.2s var(--ease-out-quad),
+    rotate 0.2s var(--ease-out-quad);
+}
+
+.tunnel__expand svg[data-icon='close'] {
+  opacity: 0;
+  rotate: -90deg;
+}
+
+.tunnel__expand[aria-pressed='true'] svg[data-icon='open'] {
+  opacity: 0;
+  rotate: 90deg;
+}
+
+.tunnel__expand[aria-pressed='true'] svg[data-icon='close'] {
+  opacity: 1;
+  rotate: 0deg;
+}
+
+/* Fullscreen, both ways in. Native fullscreen mostly styles itself — the UA stretches the element
+   — but the height clamp has to yield. The data attribute is the fallback for browsers with no
+   element fullscreen (iPhones), where the window becomes a fixed overlay instead. */
+.tunnel__window:fullscreen {
+  height: 100%;
+}
+
+.tunnel__window[data-full] {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  height: 100dvh;
+}
+
 /* Which knit, and what it costs — both inside the window, in the two bottom corners.
    The shadow rather than a scrim: a gradient band across the foot of the channel would cover the
    microclimate, which is the part being read. A shadow costs nothing and only darkens what is
@@ -4364,7 +4437,9 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .tunnel__units::before,
-  .tunnel__unit {
+  .tunnel__unit,
+  .tunnel__expand,
+  .tunnel__expand svg {
     transition: none;
   }
 }

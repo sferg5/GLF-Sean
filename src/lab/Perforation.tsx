@@ -617,6 +617,12 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       for (let i = 0; i < 260; i++) advance()
       for (const r of runtimes) render(r)
     } else {
+      /* A shorter warm-up before going live. This branch also runs on the rebuild that entering
+         fullscreen forces, and a field that starts from rest opens on an empty black box for the
+         first seconds of exactly the moment somebody chose to look closer. 120 steps is a formed
+         flow and the beginnings of the microclimate, at a cost of roughly a fifth of a second
+         behind a click or a scroll. */
+      for (let i = 0; i < 120; i++) advance()
       frame = requestAnimationFrame(tick)
     }
 
