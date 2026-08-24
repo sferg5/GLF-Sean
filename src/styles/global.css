@@ -4191,46 +4191,19 @@ button {
 }
 
 /* The controls
-   One slider and three switches. The pace is the only variable: the fabrics are products, not
-   parameters, so their geometry is fixed.
+   The pace slider, centred under the figure it drives; the layer switches, centred under the
+   pictures they turn on and off. The two-column control bar is gone with the layout that needed
+   it.
    ------------------------------------------------------------------ */
 
-.tunnel__controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: clamp(8px, 1.4svh, 14px) clamp(14px, 2.4vw, 34px);
-}
-
-/* An instruction rather than a field name, so it is set as a line of the page's voice and not as a
-   label: full ink, lower case, its own row above the control it is talking about. */
-.tunnel__sublabel {
-  grid-column: 1 / -1;
-  margin: 0;
-  font-size: clamp(0.95rem, 1.2vw, 1.12rem);
-  letter-spacing: -0.01em;
-  color: var(--page-ink);
-}
-
-/* Built for a finger. It was an 11px label beside a 2px track — a mouse's control — and this is
-   going on a display somebody walks up to. */
 .tunnel__pace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: clamp(12px, 1.8vw, 24px);
+  display: block;
+  /* Long enough to give a 3–17 km/h range real travel, short of full width so it reads as one
+     centred control rather than as a rule across the page. */
+  width: min(560px, calc(100% - 2 * clamp(20px, 4vw, 72px)));
+  margin-inline: auto;
   cursor: pointer;
   user-select: none;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-}
-
-.tunnel__pace > output {
-  color: var(--page-ink);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  text-align: right;
-  /* Fixed, so a value going from 9.0 to 10.5 doesn't shove the track sideways. */
-  min-width: 8ch;
 }
 
 .tunnel__pace input[type='range'] {
@@ -4286,8 +4259,9 @@ button {
 }
 
 .tunnel__layers {
-  display: inline-flex;
-  gap: clamp(12px, 1.6vw, 22px);
+  display: flex;
+  justify-content: center;
+  gap: clamp(14px, 2vw, 26px);
   font-size: clamp(0.82rem, 0.95vw, 0.94rem);
 }
 
@@ -4312,27 +4286,28 @@ button {
 }
 
 /* The verdict
-   Two figures, and both are comparisons — neither means much on its own. Set large, because this
-   is the sentence the section exists to say.
+   Three figures under the statement, centred: the reader's pace, then the two things the new knit
+   does at it. The first is live — it is the slider's readout, a row above the slider — and the
+   other two are comparisons, because neither means much on its own.
    ------------------------------------------------------------------ */
 
 .tunnel__verdict {
   display: flex;
+  justify-content: center;
   flex-wrap: wrap;
-  gap: clamp(20px, 5vw, 76px);
+  gap: clamp(20px, 5vw, 84px);
   margin: 0;
-  padding-top: clamp(14px, 2.4vh, 28px);
-  border-top: 1px solid var(--page-rule);
 }
 
 .tunnel__figure {
   display: grid;
   gap: 2px;
   margin: 0;
+  text-align: center;
 }
 
 .tunnel__figure > b {
-  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  font-size: clamp(1.5rem, 2.7vw, 2.4rem);
   font-weight: var(--weight-heading);
   line-height: 1;
   letter-spacing: -0.026em;
@@ -4363,12 +4338,15 @@ button {
     gap: 12px;
   }
 
-  /* The two corner labels would meet in the middle on a phone, so the reading goes under the knit
-     rather than opposite it. */
+  /* The two corner labels would meet in the middle on a phone, so they stack in the left corner
+     instead — the knit's name first, its reading under it, which is the order they are read in. */
+  .tunnel__knit {
+    bottom: calc(clamp(8px, 1.4svh, 14px) + 1.35em);
+  }
+
   .tunnel__read {
     right: auto;
     left: clamp(20px, 4vw, 72px);
-    bottom: calc(clamp(8px, 1.4svh, 14px) + 1.35em);
     text-align: left;
   }
 }

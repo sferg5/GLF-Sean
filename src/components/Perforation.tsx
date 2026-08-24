@@ -147,6 +147,37 @@ export function Perforation() {
       <div className="tunnel__frame">
         <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
+        {/* The verdict, directly under the statement — three figures, and the first is live.
+            The pace leads because it is the reader's own number: the two comparisons to its right
+            are what that pace costs on one knit and buys on the other. */}
+        <div className="tunnel__verdict tunnel__inset" aria-hidden="true">
+          <p className="tunnel__figure">
+            <b>{pace.toFixed(1)} km/h</b>
+            <span>is your speed</span>
+          </p>
+          <p className="tunnel__figure">
+            <b>{figures.ratio.toFixed(2)}×</b>
+            <span>more air through the knit</span>
+          </p>
+          <p className="tunnel__figure">
+            <b>{figures.drop.toFixed(1)} °C</b>
+            <span>cooler against the skin</span>
+          </p>
+        </div>
+
+        {/* The control, centred under the figure it drives. No inline label and no output: the
+            first figure above it *is* the readout, and it updates as the thumb moves. */}
+        <label className="tunnel__pace" aria-label="Set your pace">
+          <input
+            type="range"
+            min={PACE.min}
+            max={PACE.max}
+            step={PACE.step}
+            value={pace}
+            onChange={(e) => setPace(Number(e.currentTarget.value))}
+          />
+        </label>
+
         <div className="tunnel__axis" aria-hidden="true">
           {MARKS.map((mark) => (
             <span
@@ -178,52 +209,20 @@ export function Perforation() {
           />
         </div>
 
-        {/* Between the picture and the verdict, which is the whole point of where it is: it
-            changes the diagram above it and the numbers below it, and standing between the two is
-            how a control says so. */}
-        <div className="tunnel__controls tunnel__inset">
-          {/* The instruction, not a field name. With this above it the slider's own inline `pace`
-              label was the same word twice in two lines, so the control is just the track and its
-              value now. */}
-          <p className="tunnel__sublabel">set your pace.</p>
-          <label className="tunnel__pace">
-            <input
-              type="range"
-              min={PACE.min}
-              max={PACE.max}
-              step={PACE.step}
-              value={pace}
-              onChange={(e) => setPace(Number(e.currentTarget.value))}
-            />
-            <output>{pace.toFixed(1)} km/h</output>
-          </label>
-          <span className="tunnel__layers">
-            {LAYER_NAMES.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                className="tunnel__layer"
-                aria-pressed={layers[key]}
-                onClick={() => setLayers((v) => ({ ...v, [key]: !v[key] }))}
-              >
-                {label}
-              </button>
-            ))}
-          </span>
-        </div>
-
-        {/* The verdict: the two things the new knit does, said as a comparison rather than as a
-            pair of absolute readings — neither figure means much on its own. */}
-        <footer className="tunnel__verdict tunnel__inset" aria-hidden="true">
-          <p className="tunnel__figure">
-            <b>{figures.ratio.toFixed(2)}×</b>
-            <span>more air through the knit</span>
-          </p>
-          <p className="tunnel__figure">
-            <b>{figures.drop.toFixed(1)} °C</b>
-            <span>cooler against the skin</span>
-          </p>
-        </footer>
+        {/* The layer switches, centred under the pictures they turn on and off. */}
+        <span className="tunnel__layers">
+          {LAYER_NAMES.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              className="tunnel__layer"
+              aria-pressed={layers[key]}
+              onClick={() => setLayers((v) => ({ ...v, [key]: !v[key] }))}
+            >
+              {label}
+            </button>
+          ))}
+        </span>
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
