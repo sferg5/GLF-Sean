@@ -42,7 +42,7 @@ import {
  * here because these numbers look like instrument readings.
  */
 
-const TITLE = 'the same wind, through seven different knits'
+const TITLE = 'find your flow.'
 
 /**
  * The axis, said once.
