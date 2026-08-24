@@ -1,55 +1,47 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInView, useReducedMotion } from 'motion/react'
-import { type Layers, usePerforation } from '../lab/Perforation'
-import {
-  DIA,
-  FABRICS,
-  type FabricId,
-  PITCH,
-  REFERENCE,
-  type Reading,
-  WALL,
-  WIND,
-  byId,
-} from '../lib/perforation'
+import { type ChannelRefs, type Layers, usePerforation } from '../lab/Perforation'
+import { FABRICS, PACE, WALL, porosityOf, predict } from '../lib/perforation'
 
 /**
- * The airflow bench test, replacing the two-channel comparison that stood here.
+ * Fast and Free, twice, in the same wind.
  *
- * **What changed and why.** The old section put two fabrics side by side in the same wind and
- * counted what got through — a clean argument, and a closed one: two fixtures, one slider, one
- * verdict. This is the same question asked as an instrument instead. One specimen at a time, seven
- * of them across the whole range from a tight commuter woven to an open mesh, and the perforation
- * geometry itself on two sliders underneath — so the reader is not choosing between two answers
- * somebody else prepared, they are moving the variable and watching the flow answer.
+ * Two channels seen in cross-section, stacked and full bleed: **outside air at the left edge, skin
+ * at the right**, the knit standing across each. Today's knit on top, the new one below. Same air
+ * into both, same pace, and the only difference in the entire model is how open the knit is.
  *
- * That trade is worth stating plainly, because the old section was better at one thing: a
- * comparison is legible in a second and a parameter space is not. What this buys is that the
- * picture is now *solved* rather than transported — air accelerates through a hole because
- * continuity makes it, stagnation banks up on the upstream face, the jets shed into a wake — and
- * the figures underneath are read off that field rather than looked up. See `lib/perforation.ts`.
+ * **The comparison is a controlled experiment rather than a pair of illustrations.** One loop steps
+ * both fields, both take the same wind and the same deterministic inflow perturbation, and nothing
+ * in the step reads a random number. See `lab/Perforation.tsx`.
  *
- * **Nothing here reads scroll**, same as the section it replaces and for the same reason: this is
- * going on a display, and on a display nobody scrolls, a section that only starts once you have
- * scrolled into the middle of it is a section that is never running when it's looked at. `showing`
- * gates the loop for the frame budget, not for the choreography — the composition and the figures
- * are there from the first paint either way.
+ * **Colour is heat, and that is the whole point of the section.** Airflow is the mechanism; staying
+ * cool is the claim. The body puts out heat at the skin edge at a rate that has nothing to do with
+ * what you are wearing, and what differs between the two channels is whether the air arriving
+ * through the knit carries it away. On today's knit it banks up against the skin and the
+ * microclimate glows; on the new one the same body heat leaves as fast as it arrives.
  *
- * **Every figure is solver-derived and none of it is measured.** The perforation numbers per fabric
- * are plausible rather than specified and the unit conversions are scale factors. Nothing here
- * should be shown to a guest without someone who owns an actual knit reading it first — the same
- * caveat the shoe's prose, the call-out labels and the old section all carry, and it applies harder
- * here because these numbers look like instrument readings.
+ * An earlier version of this section coloured the field by *velocity*, which said the opposite of
+ * what it meant: fast air rendered hot, so the better fabric looked like the hotter one.
+ *
+ * **Nothing here reads scroll.** This is going on a display, and on a display nobody scrolls, a
+ * section that only starts once you have scrolled into the middle of it is a section that is never
+ * running when it is looked at. `showing` gates the loop for the frame budget, not for the
+ * choreography — the composition and the figures are there from the first paint either way.
+ *
+ * **Every figure is solver-derived and none of it is measured.** The two porosities are the ones
+ * `lib/air.ts` already commits to; the perforation geometry behind them is plausible rather than
+ * specified, and the conversion to °C is a scale factor. Nothing here should be shown to a guest
+ * without someone who owns the actual knit reading it first.
  */
 
 const TITLE = 'better air flow. cooler feel.'
 
 /**
- * The axis, said once.
+ * The axis, said once for both channels.
  *
- * Same two marks and the same `WALL` as the old section, deliberately: a reader who has seen the
- * moisture bench test upstairs should not have to re-learn which end of a cross-section is the
- * skin. Outside air arrives at the left, the fabric stands at 36%.
+ * Both are the same geometry, so naming it twice would be labelling the picture rather than the
+ * diagram. Same two marks and the same `WALL` as the moisture bench test upstairs, deliberately: a
+ * reader who has seen one cross-section on this page already knows which end is the skin.
  */
 const MARKS = [
   { at: 0, label: 'outside air', align: 'start' },
@@ -67,126 +59,83 @@ export function Perforation() {
   const reduced = !!useReducedMotion()
 
   /**
-   * The reader's variables. Three of them where the old section had one.
+   * The reader's variable, and the section's only one.
    *
-   * None are persisted or in the URL, on the same argument the old pace slider made: the reel's
-   * dials and the background picker are *settings* that a link should carry, and this is an
-   * experiment you run standing in front of it. It should always open on the reference specimen at
-   * the reference wind.
+   * Not persisted and not in the URL, unlike nearly every other control on this site. The reel's
+   * dials and the background picker are *settings* that a link should carry; this is an experiment
+   * you run while standing in front of it, and it should always open at the reference pace the
+   * copy is written against.
    */
-  const [fabric, setFabric] = useState<FabricId | null>(REFERENCE)
-  const [wind, setWind] = useState(WIND.ref)
-  const [dia, setDia] = useState(byId(REFERENCE).dia)
-  const [pitch, setPitch] = useState(byId(REFERENCE).pitch)
-  const [drag, setDrag] = useState(byId(REFERENCE).drag)
+  const [pace, setPace] = useState(PACE.ref)
   const [layers, setLayers] = useState<Layers>({ particles: true, glyphs: true, heat: true })
 
-  /**
-   * The reading, at 4Hz off the solved field.
-   *
-   * Held in state rather than written straight to the DOM because the figures are type and want to
-   * be type — and 4Hz is slow enough that a React render per reading costs nothing measurable.
-   */
-  const [reading, setReading] = useState<Reading | null>(null)
+  /** Measured and committed, not read live — see the note on `CURVE` in `lib/perforation.ts`. */
+  const figures = useMemo(() => predict(pace), [pace])
+  /** Solved from the geometry, so a label is right on the first paint. */
+  const open = useMemo(() => FABRICS.map((f) => porosityOf(f) * 100), [])
 
-  /* The loop reads refs, so moving a slider never restarts a running field. */
-  const windRef = useRef(wind)
-  windRef.current = wind / 2.85
-  const geometry = useRef({ dia, pitch, drag })
-  geometry.current = { dia, pitch, drag }
+  /* The loop reads refs, so moving the slider never restarts a running field. */
+  const paceRef = useRef(pace)
+  paceRef.current = pace
   const layerRef = useRef(layers)
   layerRef.current = layers
 
-  const flow = useRef<HTMLCanvasElement>(null)
-  const glyph = useRef<HTMLCanvasElement>(null)
+  const nowFlow = useRef<HTMLCanvasElement>(null)
+  const nowGlyph = useRef<HTMLCanvasElement>(null)
+  const nextFlow = useRef<HTMLCanvasElement>(null)
+  const nextGlyph = useRef<HTMLCanvasElement>(null)
+
+  /* Stable across renders, or the effect that owns both fields would tear down on every movement
+     of the slider. */
+  const channels = useMemo(
+    () =>
+      [
+        { flow: nowFlow, glyph: nowGlyph, spec: FABRICS[0] },
+        { flow: nextFlow, glyph: nextGlyph, spec: FABRICS[1] },
+      ] as const satisfies readonly [ChannelRefs, ChannelRefs],
+    [],
+  )
 
   /**
    * The one thing about this section that depends on where the page is.
    *
    * Not an activation — the composition is drawn either way and the figures are up from the first
-   * frame. It's that a pressure solve at sixty frames a second behind two screens of other content
-   * is a frame budget spent on nothing.
+   * frame. It is that two pressure solves at sixty frames a second behind two screens of other
+   * content is a frame budget spent on nothing.
    */
   const showing = useInView(section, { amount: 0.2 })
 
   usePerforation({
-    flow,
-    glyph,
-    wind: windRef,
-    geometry,
+    channels,
+    pace: paceRef,
     layers: layerRef,
     showing,
     reduced,
-    onReading: setReading,
   })
-
-  /** Selecting a specimen writes its geometry into the sliders; moving a slider clears the selection. */
-  const pick = (id: FabricId) => {
-    const spec = byId(id)
-    setFabric(id)
-    setDia(spec.dia)
-    setPitch(spec.pitch)
-    setDrag(spec.drag)
-  }
-
-  /* Diameter and pitch are not independent — a hole wider than its own spacing is not a
-     perforation, it is a slot. Whichever one is being moved wins and the other follows. */
-  const onDia = (v: number) => {
-    setFabric(null)
-    setDia(v)
-    if (v > pitch * 0.95) setPitch(v / 0.95)
-  }
-  const onPitch = (v: number) => {
-    setFabric(null)
-    setPitch(v)
-    if (dia > v * 0.95) setDia(v * 0.95)
-  }
-
-  /** Specified open area, for the rail. The solved figure is on the dial and they differ slightly. */
-  const specified = useMemo(
-    () => FABRICS.map((f) => Math.min(1, f.dia / f.pitch)),
-    [],
-  )
-
-  const current = fabric ? byId(fabric) : null
-  const porosity = reading ? reading.porosity : Math.min(100, (dia / pitch) * 100)
 
   /**
    * Published for the checks.
    *
-   * A superset of what the old section published — `pace`, `wall`, `porosity` and `reduced` keep
-   * their names and their shapes so anything already parsing this payload still parses it — plus
-   * the figures that only exist because the field is solved now.
+   * `pace`, `wall`, `porosity`, `ratio`, `drop` and `reduced` keep the names and the shapes the old
+   * `components/Fabric.tsx` published, because they now mean the same things again: this is the
+   * same two-fabric comparison at the same two porosities, so `ratio` is once more the new knit's
+   * airflow over today's and `drop` is once more how many °C cooler it keeps the skin.
    *
-   * **`ratio` and `drop` are gone rather than reinterpreted**, and that is the honest choice. Both
-   * were comparisons between two fixed fabrics in the same wind, and there is only one specimen in
-   * the channel now — a `ratio` computed against whichever fabric happened to be densest would be
-   * the same key name meaning a different thing, which is worse for a script than an absent key.
-   * `drop` in particular was a temperature in °C derived from an invented conversion; the `drop`
-   * here is a pressure in Pa read off the field, so it is not the same quantity and does not
-   * inherit the name. It is published as `dropPa`.
-   *
-   * `scripts/fabric.mjs` asserts the old markup directly — two `.fabric__canvas` elements, two
-   * `.fabric__figure > b` values, a `.fabric__pace` slider — and none of that is on this section.
-   * That script needs rewriting against `.tunnel`; it is not a thing this payload can paper over.
+   * `scripts/fabric.mjs` still asserts the old markup — `.fabric__canvas`, `.fabric__figure > b`,
+   * `.fabric__pace` — and none of that is on this section. That script needs re-pointing at
+   * `.tunnel`; it is not something this payload can paper over.
    */
   useEffect(() => {
-    if (!reading) return
     document.documentElement.dataset.fabric = JSON.stringify({
-      pace: Number(wind.toFixed(1)),
+      pace,
       wall: WALL,
-      porosity: specified,
+      porosity: open.map((v) => Number((v / 100).toFixed(4))),
+      ratio: Number(figures.ratio.toFixed(3)),
+      drop: Number(figures.drop.toFixed(2)),
+      rise: figures.rise.map((v) => Number(v.toFixed(2))),
       reduced,
-      specimen: fabric ?? 'custom',
-      dia: Number(dia.toFixed(2)),
-      pitch: Number(pitch.toFixed(2)),
-      open: Number(reading.porosity.toFixed(1)),
-      permeability: Number(reading.permeability.toFixed(1)),
-      dropPa: Number(reading.drop.toFixed(1)),
-      turbulence: Number(reading.turbulence.toFixed(1)),
-      jet: Number(reading.jet.toFixed(1)),
     })
-  }, [reading, wind, dia, pitch, fabric, specified, reduced])
+  }, [figures, open, pace, reduced])
 
   return (
     <section className="tunnel" ref={section}>
@@ -206,14 +155,40 @@ export function Perforation() {
           ))}
         </div>
 
-        <div className="tunnel__channel">
-          <canvas className="tunnel__canvas" ref={flow} aria-hidden="true" />
-          <canvas className="tunnel__canvas" ref={glyph} aria-hidden="true" />
+        <div className="tunnel__channels">
+          <Channel
+            spec={FABRICS[0]}
+            open={open[0]}
+            rise={figures.rise[0]}
+            flow={nowFlow}
+            glyph={nowGlyph}
+            hint="drag inside to disturb the flow"
+          />
+          <Channel
+            spec={FABRICS[1]}
+            open={open[1]}
+            rise={figures.rise[1]}
+            flow={nextFlow}
+            glyph={nextGlyph}
+          />
         </div>
 
-        {/* What you can turn off, and what you can do. Both are asides, so they share one line
-            under the picture rather than each claiming a row of chrome. */}
-        <div className="tunnel__aside tunnel__inset">
+        {/* Between the picture and the verdict, which is the whole point of where it is: it
+            changes the diagram above it and the numbers below it, and standing between the two is
+            how a control says so. */}
+        <div className="tunnel__controls tunnel__inset">
+          <label className="tunnel__pace">
+            <span>pace</span>
+            <input
+              type="range"
+              min={PACE.min}
+              max={PACE.max}
+              step={PACE.step}
+              value={pace}
+              onChange={(e) => setPace(Number(e.currentTarget.value))}
+            />
+            <output>{pace.toFixed(1)} km/h</output>
+          </label>
           <span className="tunnel__layers">
             {LAYER_NAMES.map(({ key, label }) => (
               <button
@@ -227,116 +202,80 @@ export function Perforation() {
               </button>
             ))}
           </span>
-          <p className="tunnel__hint">drag inside the channel to disturb the flow</p>
         </div>
 
-        <div className="tunnel__controls tunnel__inset">
-          {/* Seven names and a percentage. A card apiece was furniture around one line of
-              content — selected is ink with a rule under it, which is how a choice reads in
-              type. */}
-          <ul className="tunnel__specimens">
-            {FABRICS.map((spec, i) => (
-              <li key={spec.id}>
-                <button
-                  type="button"
-                  className="tunnel__fab"
-                  aria-pressed={fabric === spec.id}
-                  onClick={() => pick(spec.id)}
-                >
-                  {spec.name.toLowerCase()}
-                  <i>{(specified[i] * 100).toFixed(1)}%</i>
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <div className="tunnel__dials">
-            <label className="tunnel__dial-row">
-              <span>freestream</span>
-              <input
-                type="range"
-                min={WIND.min}
-                max={WIND.max}
-                step={WIND.step}
-                value={wind}
-                onChange={(e) => setWind(Number(e.currentTarget.value))}
-              />
-              <output>{wind.toFixed(1)} m/s</output>
-            </label>
-            <label className="tunnel__dial-row">
-              <span>perforation ø</span>
-              <input
-                type="range"
-                min={DIA.min}
-                max={DIA.max}
-                step={DIA.step}
-                value={dia}
-                onChange={(e) => onDia(Number(e.currentTarget.value))}
-              />
-              <output>{dia.toFixed(2)} mm</output>
-            </label>
-            <label className="tunnel__dial-row">
-              <span>hole pitch</span>
-              <input
-                type="range"
-                min={PITCH.min}
-                max={PITCH.max}
-                step={PITCH.step}
-                value={pitch}
-                onChange={(e) => onPitch(Number(e.currentTarget.value))}
-              />
-              <output>{pitch.toFixed(2)} mm</output>
-            </label>
-          </div>
-        </div>
-
-        {/* The prose section's facts, on the same composition. Open area leads because it is the
-            one number the reader is moving; the other three are what the field did about it. */}
-        <dl className="tunnel__facts tunnel__inset" aria-hidden="true">
-          <div className="tunnel__fact">
-            <dt>open area</dt>
-            <dd>
-              {porosity.toFixed(1)}
-              <i>%</i>
-            </dd>
-          </div>
-          <div className="tunnel__fact">
-            <dt>air permeability</dt>
-            <dd>
-              {reading ? reading.permeability.toFixed(1) : '—'}
-              <i>cfm/ft²</i>
-            </dd>
-          </div>
-          <div className="tunnel__fact">
-            <dt>pressure drop</dt>
-            <dd>
-              {reading ? reading.drop.toFixed(1) : '—'}
-              <i>Pa</i>
-            </dd>
-          </div>
-          <div className="tunnel__fact">
-            <dt>peak jet</dt>
-            <dd>
-              {reading ? reading.jet.toFixed(1) : '—'}
-              <i>m/s</i>
-            </dd>
-          </div>
-        </dl>
+        {/* The verdict: the two things the new knit does, said as a comparison rather than as a
+            pair of absolute readings — neither figure means much on its own. */}
+        <footer className="tunnel__verdict tunnel__inset" aria-hidden="true">
+          <p className="tunnel__figure">
+            <b>{figures.ratio.toFixed(2)}×</b>
+            <span>more air through the knit</span>
+          </p>
+          <p className="tunnel__figure">
+            <b>{figures.drop.toFixed(1)} °C</b>
+            <span>cooler against the skin</span>
+          </p>
+        </footer>
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
-          A cross-section of one knit in a wind tunnel, outside air on the left and skin on the
-          right, with the fabric standing across the channel a third of the way in. The current
-          specimen is {current ? current.name : 'a custom geometry'} at {dia.toFixed(2)} mm
-          perforations on a {pitch.toFixed(2)} mm pitch, which solves to{' '}
-          {porosity.toFixed(1)} per cent open area. At {wind.toFixed(1)} metres per second the
-          model gives {reading ? reading.permeability.toFixed(0) : 'no'} cfm per square foot of air
-          permeability, a {reading ? reading.drop.toFixed(0) : 'zero'} pascal pressure drop across
-          the fabric, and jets reaching {reading ? reading.jet.toFixed(1) : 'zero'} metres per
-          second where the air is squeezed through each hole. Every fabric and every figure here is
-          placeholder, derived from the simulation rather than measured in a wind tunnel.
+          Two cross-sections of Fast and Free in the same wind, outside air on the left and skin on
+          the right, with the knit standing across each channel a third of the way in. Colour is air
+          temperature: the body warms the air held against the skin, and airflow through the knit is
+          what carries that warmth away. The current knit is{' '}
+          {open[0].toFixed(0)} per cent open and holds a microclimate{' '}
+          {figures.rise[0].toFixed(1)} °C above ambient. The new knit is {open[1].toFixed(0)} per
+          cent open, moves {figures.ratio.toFixed(1)} times the air, and holds it{' '}
+          {figures.drop.toFixed(1)} °C cooler at {pace.toFixed(1)} kilometres an hour.
+          Both fabrics and every figure here are placeholder, derived from the simulation rather
+          than measured in a wind tunnel.
         </p>
       </div>
     </section>
+  )
+}
+
+/**
+ * One channel: the canvases, and the one line that says which knit it is.
+ *
+ * The label is under the picture rather than over it — laid on top it sits in the flow field, and
+ * the flow field is the thing being read. Its open area is beside it because that is the single
+ * number that explains the difference between the two pictures.
+ */
+function Channel({
+  spec,
+  open,
+  rise,
+  flow,
+  glyph,
+  hint,
+}: {
+  spec: (typeof FABRICS)[number]
+  open: number
+  rise: number
+  flow: React.RefObject<HTMLCanvasElement | null>
+  glyph: React.RefObject<HTMLCanvasElement | null>
+  hint?: string
+}) {
+  return (
+    <article className="tunnel__channel" data-knit={spec.id}>
+      <div className="tunnel__window">
+        <canvas className="tunnel__canvas" ref={flow} aria-hidden="true" />
+        <canvas className="tunnel__canvas" ref={glyph} aria-hidden="true" />
+        {hint && (
+          <p className="tunnel__hint" aria-hidden="true">
+            {hint}
+          </p>
+        )}
+      </div>
+      <p className="tunnel__knit tunnel__inset">
+        <b>
+          {spec.name.toLowerCase()} <em>{spec.tag}</em>
+        </b>
+        <span>
+          {open.toFixed(0)}% open · {rise.toFixed(1)} °C over ambient
+        </span>
+      </p>
+    </article>
   )
 }

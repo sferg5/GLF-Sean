@@ -4076,19 +4076,31 @@ button {
   left: clamp(20px, 4vw, 72px);
 }
 
-/* The channel
-   The one dark thing left, and full bleed. No radius: a rounded corner on a full-bleed element
-   is a card pretending to be a window, and the point of the bleed is that the diagram has no
-   frame.
+/* The channels
+   Two of them, stacked. The window is dark and full bleed; the line under each says which knit it
+   is. No radius: a rounded corner on a full-bleed element is a card pretending to be a window, and
+   the point of the bleed is that the diagram has no frame.
    ------------------------------------------------------------------ */
 
+.tunnel__channels {
+  display: grid;
+  gap: clamp(10px, 1.8svh, 22px);
+}
+
 .tunnel__channel {
+  display: grid;
+  gap: 7px;
+}
+
+.tunnel__window {
   position: relative;
-  height: clamp(200px, 40svh, 460px);
+  /* Half what one channel had, near enough — two of these plus their labels have to sit in the
+     same screen the single channel used to have to itself. */
+  height: clamp(112px, 21svh, 250px);
   overflow: clip;
   background: #0a0908;
   cursor: crosshair;
-  /* The channel is a control — a drag in it pushes the flow — so a drag must not select the type
+  /* The window is a control — a drag in it pushes the flow — so a drag must not select the type
      either side of it or scroll the page out from under the gesture. */
   touch-action: none;
   user-select: none;
@@ -4103,182 +4115,155 @@ button {
 }
 
 /* Edge falloff, over the canvases rather than in them. The approach flow is genuinely uniform —
-   that is what an approach flow is — so at full bleed the upstream third runs as a flat wall of
-   one value straight into the window. A gradient laid over it gives the channel a lit centre and
-   dark ends, which is where an instrument's light comes from, and costs nothing per frame. */
-.tunnel__channel::after {
+   that is what an approach flow is — so at full bleed the upstream third runs as a flat wall of one
+   value straight into the window. A gradient laid over it gives the channel a lit centre and dark
+   ends, which is where an instrument's light comes from, and costs nothing per frame. */
+.tunnel__window::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(10, 9, 8, 0.72) 0%, rgba(10, 9, 8, 0) 17%),
-    linear-gradient(270deg, rgba(10, 9, 8, 0.5) 0%, rgba(10, 9, 8, 0) 14%),
-    linear-gradient(180deg, rgba(10, 9, 8, 0.36) 0%, rgba(10, 9, 8, 0) 10%),
-    linear-gradient(0deg, rgba(10, 9, 8, 0.36) 0%, rgba(10, 9, 8, 0) 10%);
+    linear-gradient(90deg, rgba(10, 9, 8, 0.66) 0%, rgba(10, 9, 8, 0) 15%),
+    linear-gradient(270deg, rgba(10, 9, 8, 0.4) 0%, rgba(10, 9, 8, 0) 12%);
+}
+
+/* The one piece of type inside a picture, on the top channel only — an instruction repeated under
+   both would be furniture. It goes as soon as it has been obeyed. */
+.tunnel__hint {
+  position: absolute;
+  inset: auto 0 8px;
+  z-index: 1;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(0.78rem, 0.9vw, 0.88rem);
+  color: rgba(240, 238, 235, 0.34);
+  pointer-events: none;
+  transition: opacity 0.45s var(--ease-out-quad);
+}
+
+.tunnel__window[data-stirred='true'] .tunnel__hint {
+  opacity: 0;
+}
+
+/* Which knit, and what it costs. Under the window rather than laid on it: on top it sits in the
+   flow field, and the flow field is the thing being read. */
+.tunnel__knit {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: clamp(12px, 2vw, 26px);
+  margin: 0;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  color: var(--page-dim);
+}
+
+.tunnel__knit b {
+  font-weight: var(--weight-heading);
+  color: var(--page-ink);
+}
+
+/* The version. The two channels are the same garment, so this word is the only thing telling them
+   apart and it earns the accent. */
+.tunnel__knit em {
+  font-style: normal;
+  color: #ee3b33;
 }
 
 /* The controls
-   One row of specimens, three sliders, and the layer switches. The collapse, the pills, the mini
-   summary bar and the arc dial are all gone: every one of them was a dashboard convention, and
-   there is not a pill or a gauge anywhere else on this site.
+   One slider and three switches. The pace is the only variable: the fabrics are products, not
+   parameters, so their geometry is fixed.
    ------------------------------------------------------------------ */
 
 .tunnel__controls {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: clamp(18px, 3vh, 36px) clamp(12px, 1.6vw, 28px);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(14px, 2.4vw, 34px);
 }
 
-/* The specimens, on the eight columns the prose gives its text. A wrapping row of words rather
-   than a rail of cards — the list is seven short names and a percentage, and a card apiece was
-   furniture around content that is one line long. */
-.tunnel__specimens {
-  grid-column: 1 / span 7;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px clamp(14px, 1.8vw, 26px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tunnel__fab {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--page-dim);
-  cursor: pointer;
-  font-size: clamp(0.92rem, 1.1vw, 1.06rem);
-  line-height: 1.5;
-  text-transform: lowercase;
-  transition: color 0.14s var(--ease-out-quad);
-}
-
-.tunnel__fab:hover {
-  color: var(--page-ink);
-}
-
-/* Selected is ink and a rule under it, which is how a choice reads in type. No fill, no border,
-   no left bar. */
-.tunnel__fab[aria-pressed='true'] {
-  color: var(--page-ink);
-  box-shadow: inset 0 -1px 0 0 var(--page-ink);
-}
-
-.tunnel__fab i {
-  font-style: normal;
-  font-size: 0.82em;
-  color: var(--page-dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.tunnel__fab[aria-pressed='true'] i {
-  color: #ee3b33;
-}
-
-/* The sliders, on the last four columns. */
-.tunnel__dials {
-  grid-column: 9 / span 4;
-  display: grid;
-  gap: clamp(8px, 1.3vh, 14px);
-}
-
-.tunnel__dial-row {
+/* Built for a finger. It was an 11px label beside a 2px track — a mouse's control — and this is
+   going on a display somebody walks up to. */
+.tunnel__pace {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(10px, 1.4vw, 18px);
+  gap: clamp(12px, 1.8vw, 24px);
   cursor: pointer;
   user-select: none;
   font-size: clamp(0.82rem, 0.95vw, 0.94rem);
 }
 
-.tunnel__dial-row > span {
+.tunnel__pace > span {
   color: var(--page-dim);
   white-space: nowrap;
 }
 
-.tunnel__dial-row > output {
+.tunnel__pace > output {
   color: var(--page-ink);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-align: right;
-  /* Fixed, so a value going from 0.9 to 1.05 doesn't shove the track sideways. */
-  min-width: 7ch;
+  /* Fixed, so a value going from 9.0 to 10.5 doesn't shove the track sideways. */
+  min-width: 8ch;
 }
 
-.tunnel__dial-row input[type='range'] {
+.tunnel__pace input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 20px;
+  height: 22px;
   background: none;
   margin: 0;
   cursor: ew-resize;
 }
 
-.tunnel__dial-row input[type='range']::-webkit-slider-runnable-track {
+.tunnel__pace input[type='range']::-webkit-slider-runnable-track {
   height: 1px;
   background: var(--page-rule);
 }
 
-.tunnel__dial-row input[type='range']::-moz-range-track {
+.tunnel__pace input[type='range']::-moz-range-track {
   height: 1px;
   background: var(--page-rule);
 }
 
-.tunnel__dial-row input[type='range']::-webkit-slider-thumb {
+.tunnel__pace input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 13px;
-  height: 13px;
-  margin-top: -6px;
+  width: 15px;
+  height: 15px;
+  margin-top: -7px;
   border: 0;
   border-radius: 50%;
   background: #ee3b33;
 }
 
-.tunnel__dial-row input[type='range']::-moz-range-thumb {
-  width: 13px;
-  height: 13px;
+.tunnel__pace input[type='range']::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
   border: 0;
   border-radius: 50%;
   background: #ee3b33;
 }
 
-.tunnel__dial-row input[type='range']:focus {
+.tunnel__pace input[type='range']:focus {
   outline: none;
 }
 
-.tunnel__dial-row input[type='range']:focus-visible::-webkit-slider-thumb,
-.tunnel__dial-row input[type='range']:hover::-webkit-slider-thumb {
+.tunnel__pace input[type='range']:focus-visible::-webkit-slider-thumb,
+.tunnel__pace input[type='range']:hover::-webkit-slider-thumb {
   box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
 }
 
-.tunnel__dial-row input[type='range']:focus-visible::-moz-range-thumb,
-.tunnel__dial-row input[type='range']:hover::-moz-range-thumb {
+.tunnel__pace input[type='range']:focus-visible::-moz-range-thumb,
+.tunnel__pace input[type='range']:hover::-moz-range-thumb {
   box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
-}
-
-/* The layer switches and the drag hint share the line under the channel — one is what you can
-   turn off, the other is what you can do, and both are asides. */
-.tunnel__aside {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: clamp(14px, 2vw, 28px);
-  flex-wrap: wrap;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  color: var(--page-dim);
 }
 
 .tunnel__layers {
   display: inline-flex;
   gap: clamp(12px, 1.6vw, 22px);
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
 }
 
 .tunnel__layer {
@@ -4301,50 +4286,37 @@ button {
   box-shadow: inset 0 -1px 0 0 var(--page-ink);
 }
 
-.tunnel__hint {
-  margin: 0;
-}
-
-/* The figures
-   The prose section's facts, exactly: a definition list on the same eight columns, labels dim
-   above values. The arc gauge and the three 2.3rem numerals are gone — they were an instrument
-   panel, and the page states its facts in type.
-
-   The values are set larger than `.prose__fact dd` and nothing else differs. These are the
-   measurement the section exists to produce, where the prose's facts are a spec card; a little
-   size is the whole distinction between the two.
+/* The verdict
+   Two figures, and both are comparisons — neither means much on its own. Set large, because this
+   is the sentence the section exists to say.
    ------------------------------------------------------------------ */
 
-.tunnel__facts {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(14px, 2vh, 24px) clamp(12px, 1.6vw, 28px);
+.tunnel__verdict {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(20px, 5vw, 76px);
   margin: 0;
   padding-top: clamp(14px, 2.4vh, 28px);
   border-top: 1px solid var(--page-rule);
 }
 
-.tunnel__fact dt {
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  line-height: 1.45;
-  color: var(--page-dim);
-  text-wrap: pretty;
+.tunnel__figure {
+  display: grid;
+  gap: 2px;
+  margin: 0;
 }
 
-.tunnel__fact dd {
-  margin: 3px 0 0;
-  font-size: clamp(1.15rem, 1.7vw, 1.6rem);
-  line-height: 1.2;
-  letter-spacing: -0.018em;
+.tunnel__figure > b {
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  font-weight: var(--weight-heading);
+  line-height: 1;
+  letter-spacing: -0.026em;
   font-variant-numeric: tabular-nums;
 }
 
-.tunnel__fact dd i {
-  font-style: normal;
-  font-size: 0.56em;
-  letter-spacing: 0;
+.tunnel__figure > span {
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
   color: var(--page-dim);
-  margin-left: 3px;
 }
 
 /* Said once, in words, for anything that can't see the canvas. */
@@ -4360,14 +4332,15 @@ button {
   border: 0;
 }
 
-@media (max-width: 900px) {
-  .tunnel__specimens,
-  .tunnel__dials {
-    grid-column: 1 / -1;
+@media (max-width: 760px) {
+  .tunnel__controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 
-  .tunnel__facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .tunnel__knit {
+    flex-direction: column;
+    gap: 1px;
   }
 }
 

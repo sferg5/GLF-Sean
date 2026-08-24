@@ -1,64 +1,72 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import {
+  type FabricSpec,
   type Field,
-  type Reading,
+  HOT,
   type Stir,
   buildMembrane,
-  columnsFor,
   createField,
-  measure,
   sample,
   step,
-  window0,
-  window1,
+  windFor,
 } from '../lib/perforation'
 
 /**
- * The perforation field, drawn.
+ * Two channels of air, drawn — and coloured by how warm it is, not by how fast.
  *
- * The physics is `lib/perforation.ts` and stays there. This file is three pictures of the same
- * solved field, composited in one order, plus the loop that drives them:
+ * The physics is `lib/perforation.ts`. This file is three pictures of the same solved field,
+ * composited in one order, and the loop that drives both channels:
  *
- * - **Heat**, the speed magnitude as a low-resolution raster, drawn under everything as the glow
- *   that says where the energy is.
- * - **Streaklines**, particles advected through the field into a persistent buffer that fades
- *   rather than clears. This is the layer that carries the image — a still frame of points is a
- *   speckle, and the same points with a fourteen-frame tail are the flow.
- * - **Glyphs**, a monospace grid sampling direction into `- \ | /` and speed into brightness. The
- *   plotter reading of the same field, and the reason the section reads as an instrument rather
- *   than as a smoke machine.
+ * - **Heat**, the temperature field as a low-resolution raster, transparent at ambient and
+ *   glowing where warmth has banked up. Under everything, because it is the answer and the rest
+ *   is the mechanism.
+ * - **Streaklines**, particles advected through the flow into a buffer that fades rather than
+ *   clears. A still frame of points is a speckle; the same points with a fourteen-frame tail are
+ *   the airflow.
+ * - **Glyphs**, a monospace grid sampling direction into `- \ | /`. The plotter reading of the
+ *   same field, and the reason this reads as an instrument rather than a smoke machine.
  *
- * **Colour, against the grain of `lab/WindTunnel.tsx`.** That file took the colour out on the
- * argument that "a section that arrives in cyan and crimson is a different brand for one screen",
- * and it was right about cyan and crimson. This ramp is the brand red — #EE3B33 at its midpoint,
- * deep maroon below, ember and gold above — so what arrives is not a foreign palette but the
- * page's own accent used as a scale. It earns the colour by carrying information the neutral could
- * not: at 25% open the jets run four times the freestream, and a monochrome ramp puts the
- * freestream and the jet core within one step of each other.
+ * **Colour is temperature. Brightness is speed.** That split is the whole visual grammar and it is
+ * worth stating plainly, because the obvious version — colour by velocity — is what this section
+ * used to do and it said the wrong thing entirely. Fast air rendered hot, so the *better* fabric
+ * looked like the hotter one. Now the hue of every mark is the temperature of the air it is made
+ * of and its brightness is how fast that air is moving, so the open knit reads as what it is: more
+ * movement, less heat.
  *
- * **Nothing in here reads scroll**, same as the tunnel it sits beside. The field runs whenever the
- * section is in front of you.
+ * **Ambient is a quiet cool slate and only heat is coloured.** Not a blue-to-red thermal ramp —
+ * `lab/WindTunnel.tsx` records why that was dropped once already ("a section that arrives in cyan
+ * and crimson is a different brand for one screen"), and it was right. Cool here is barely a hue
+ * at all, just a cold grey that sits down against the ground; everything with any saturation in it
+ * is warmth. The palette stays lululemon and red still means one thing.
  */
 
 /* Ink
    ------------------------------------------------------------------ */
 
 /**
- * The ramp, as stops.
+ * The ramp, as stops: ambient at 0, a cell with no airflow at all at 1.
  *
- * Brand red sits at 0.52 rather than at the top, which is the placement that matters: the
- * freestream lands near 0.38 and has to read as *present but cool*, so everything below the red is
- * spent getting from near-black to it, and everything above is the headroom a jet needs.
+ * **The cool end is lifted well off the ground, and that was a correction.** It sat at a near-black
+ * slate on the first pass, on the theory that ambient air should be quiet — and the result was a
+ * channel that was four-fifths black, with the airflow invisible and a wall of fire at one end. The
+ * approach flow is not background: it is the mechanism the whole claim rests on. So ambient is a
+ * clearly visible cool slate, desaturated enough to read as the absence of heat rather than as a
+ * colour of its own, and warmth is what adds saturation.
+ *
+ * Brand red lands at 0.76, which is where the current knit's microclimate sits. That is the
+ * placement that matters: the section's whole claim is the distance between the two channels on
+ * this scale, so the fabric that has a problem needs to be unmistakably in the red and the one
+ * that fixes it needs to be visibly short of it.
  */
 const STOPS: [number, number, number, number][] = [
-  [0.0, 16, 6, 14],
-  [0.1, 46, 12, 20],
-  [0.24, 128, 28, 32],
-  [0.38, 200, 40, 38],
-  [0.52, 238, 59, 51],
-  [0.7, 245, 120, 58],
-  [0.86, 249, 190, 69],
-  [1.0, 255, 243, 220],
+  [0.0, 104, 122, 148],
+  [0.16, 126, 118, 148],
+  [0.32, 158, 92, 108],
+  [0.48, 186, 62, 68],
+  [0.62, 216, 48, 44],
+  [0.76, 238, 59, 51],
+  [0.88, 243, 126, 62],
+  [1.0, 248, 186, 116],
 ]
 
 const ramp = (t: number): [number, number, number] => {
@@ -76,31 +84,43 @@ const ramp = (t: number): [number, number, number] => {
   return [last[1], last[2], last[3]]
 }
 
-/**
- * Quantisation. Every particle in a bin is filled under one `fillStyle`, so this is the number of
- * style changes a frame costs rather than a number of colours anybody can count.
- */
+/** Quantisation: the number of `fillStyle` changes a frame costs, not a number of colours. */
 const BINS = 14
 const INK = Array.from({ length: BINS }, (_, i) => {
   const [r, g, b] = ramp((i + 0.5) / BINS)
   return `rgb(${r | 0},${g | 0},${b | 0})`
 })
 
-/** The membrane, in the page's warm neutral rather than in the ramp. It is not part of the scale. */
+/** The knit, in the page's warm neutral. It is not on the temperature scale and must not look it. */
 const SPECIMEN = '226,221,210'
-const WITNESS = 'rgba(238,59,51,0.62)'
 
 /**
- * Per-layer tone curves over the same exposure window.
+ * Exposure, and the one place a display decision is allowed to shape the picture.
  *
- * Three curves rather than one because the layers have different jobs. Heat is an underglow and
- * wants its midtones pushed down or it fogs the streaklines it sits beneath. Streaklines must stay
- * legible everywhere, so they get a floor — a particle rendered at true zero is a particle that
- * isn't there, and the approach flow would go missing. Glyphs sit between the two.
+ * **Never against a channel's own maximum.** Auto-exposing per channel would normalise away the
+ * entire comparison: the open knit's warmest air would render as hot as the closed knit's, because
+ * it would be the warmest thing in its own frame. Both channels are measured against the same
+ * fixed scale, so cooler genuinely looks cooler.
+ *
+ * `HOT` is the stagnant ceiling — what a cell with no airflow at all settles at — and nothing ever
+ * reaches it. Settled headlessly at the reference pace, today's microclimate *means* sit at 0.35 of
+ * it and the new one's at 0.21, but the cells hard against the skin run well above their own mean,
+ * so exposing on the means alone clipped every one of them to white. At 0.62 of the ceiling the two
+ * means land at 0.46 and 0.24 of the ramp and the hot cells reach ember without going to paper.
+ *
+ * The curve is a transfer function, not a thumb on the scale: monotonic, identical for both
+ * channels, and it changes neither the ordering nor the ratio between them. It spends more of the
+ * ramp on the range the two fabrics actually occupy, which is what a thermal image does. The °C
+ * printed under the picture are the solver's own and are not curved at all.
  */
-const heatOf = (t: number) => Math.pow(t, 1.02)
-const partOf = (t: number) => 0.22 + 0.78 * Math.pow(t, 0.8)
-const glyphOf = (t: number) => Math.pow(t, 0.8)
+const EXPOSE = HOT * 0.92
+const CONTRAST = 1.5
+
+const tempOf = (t: number) => {
+  const n = t / EXPOSE
+  const c = n < 0 ? 0 : n > 1 ? 1 : n
+  return Math.pow(c, CONTRAST)
+}
 
 const GLYPHS = ['-', '\\', '|', '/'] as const
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
@@ -108,21 +128,17 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
 /* Particles
    ------------------------------------------------------------------ */
 
-const COUNT = 8600
+const COUNT = 4200
 
-type Swarm = { x: Float32Array; y: Float32Array; life: Float32Array; active: number }
+type Swarm = { x: Float32Array; y: Float32Array; life: Float32Array }
 
 const makeSwarm = (f: Field): Swarm => {
   const s: Swarm = {
     x: new Float32Array(COUNT),
     y: new Float32Array(COUNT),
     life: new Float32Array(COUNT),
-    active: COUNT,
   }
   for (let i = 0; i < COUNT; i++) {
-    /* Seeded across the whole field rather than at the inlet: the first frame should be a flow,
-       not an empty channel filling from the left. Deterministic is not worth it here — a start
-       position is washed out within a second of stepping. */
     s.x[i] = Math.random() * f.w
     s.y[i] = Math.random() * f.h
     s.life[i] = Math.random() * 160
@@ -133,12 +149,12 @@ const makeSwarm = (f: Field): Swarm => {
 /**
  * Advance the swarm.
  *
- * Most respawns go to the inlet, a fifth go anywhere. The fifth is what keeps a recirculation zone
- * behind a dense specimen from reading as a rendering hole: nothing reaches it from upstream, which
- * is true and correct, and an entirely empty region reads as a bug rather than as a wake.
+ * Most respawns go to the inlet, a fifth go anywhere. The fifth keeps the recirculation behind a
+ * closed knit from reading as a rendering hole: nothing reaches it from upstream, which is true
+ * and is the point, and an entirely empty region reads as a bug rather than as stagnant air.
  */
-function move(f: Field, s: Swarm): void {
-  for (let i = 0; i < s.active; i++) {
+function move(f: Field, s: Swarm, live: number): void {
+  for (let i = 0; i < live; i++) {
     const px = s.x[i]
     const py = s.y[i]
     const uu = sample(f, f.u, px, py)
@@ -154,9 +170,6 @@ function move(f: Field, s: Swarm): void {
       s.life[i] = 0
       continue
     }
-    /* Inside the fabric: back out along the way in and jitter, rather than teleport. A particle
-       nudged out of a solid cell that keeps its velocity finds the nearest hole, which is what air
-       does. */
     if (f.solid[(x | 0) + (y | 0) * f.w]) {
       x -= uu * 1.4
       y -= vv * 1.4 + (Math.random() - 0.5) * 0.7
@@ -171,256 +184,324 @@ function move(f: Field, s: Swarm): void {
 
 export type Layers = { particles: boolean; glyphs: boolean; heat: boolean }
 
-type Options = {
+export type ChannelRefs = {
   flow: React.RefObject<HTMLCanvasElement | null>
   glyph: React.RefObject<HTMLCanvasElement | null>
-  /** Live, so dragging a slider never restarts a running loop. */
-  wind: React.RefObject<number>
-  geometry: React.RefObject<{ dia: number; pitch: number; drag: number }>
+  spec: FabricSpec
+}
+
+type Options = {
+  channels: readonly [ChannelRefs, ChannelRefs]
+  /** Live, so dragging the slider never restarts a running field. */
+  pace: React.RefObject<number>
   layers: React.RefObject<Layers>
   showing: boolean
   reduced: boolean
-  /** Called at about 4Hz with the field's reading. Not every frame — nothing can read that fast. */
-  onReading: (r: Reading) => void
+}
+
+/** Everything one channel needs, built once per layout. */
+type Runtime = {
+  spec: FabricSpec
+  field: Field
+  swarm: Swarm
+  host: HTMLElement
+  fc: HTMLCanvasElement
+  fx: CanvasRenderingContext2D
+  gc: HTMLCanvasElement
+  gx: CanvasRenderingContext2D
+  trail: HTMLCanvasElement
+  tx: CanvasRenderingContext2D
+  heat: HTMLCanvasElement
+  hx: CanvasRenderingContext2D
+  raster: ImageData | null
+  cw: number
+  ch: number
+  /** Particle population scale for this box — see the note where it is set. */
+  density: number
+  stir: { on: boolean; x: number; y: number; px: number; py: number }
+  detach: () => void
 }
 
 /**
- * The loop.
+ * The loop, driving both channels.
  *
- * One effect, one `requestAnimationFrame`, and a governor. The governor exists because this is
- * going on a display and a display is whatever hardware is in the room: it sheds glyph cadence
- * first, then solver iterations, and only last the streaklines, because that is the order that
- * protects the picture. Dropping particles first would keep the frame rate and lose the image.
+ * One `requestAnimationFrame` for the pair rather than one each — two independent loops would
+ * drift apart under load, and two channels of a controlled experiment stepping at different rates
+ * is not a controlled experiment. Both fields take the same wind and the same deterministic
+ * inflow perturbation, so the only difference between them is the knit.
  */
-export function usePerforation({
-  flow,
-  glyph,
-  wind,
-  geometry,
-  layers,
-  showing,
-  reduced,
-  onReading,
-}: Options): void {
-  /* The callback is read from a ref so a parent re-render never tears down a running field. */
-  const report = useRef(onReading)
-  report.current = onReading
-
+export function usePerforation({ channels, pace, layers, showing, reduced }: Options): void {
   useEffect(() => {
-    const fc = flow.current
-    const gc = glyph.current
-    if (!fc || !gc) return
+    const runtimes: Runtime[] = []
 
-    const fx = fc.getContext('2d')
-    const gx = gc.getContext('2d')
-    if (!fx || !gx) return
-
-    const host = fc.parentElement
-    if (!host) return
-
-    let field = createField(host.clientWidth / Math.max(1, host.clientHeight))
-    let swarm = makeSwarm(field)
-
-    /* Streaklines live in their own buffer so they can persist while the composite clears every
-       frame. Heat is redrawn from the field each frame and must not accumulate; particles must.
-       One canvas cannot do both. */
-    const trail = document.createElement('canvas')
-    const tx = trail.getContext('2d')
-    const heat = document.createElement('canvas')
-    const hx = heat.getContext('2d')
-    if (!tx || !hx) return
-
-    let raster: ImageData | null = null
-
-    let cw = 0
-    let ch = 0
-    let dpr = 1
     /* Two raster scales. The flow buffers are fill-rate bound and look no worse at 1.5×; the glyph
        layer is text and wants the full ratio, or the marks blur into dashes. */
-    let dprFlow = 1
+    const dpr = Math.min(2, window.devicePixelRatio || 1)
+    const dprFlow = Math.min(1.5, dpr)
 
-    let cellPx = 13
+    let cellPx = 12
     let frameMs = 16
     let quality = 1
     let glyphEvery = 2
     let live = COUNT
 
-    const stir: { on: boolean; x: number; y: number; px: number; py: number } = {
-      on: false,
-      x: 0,
-      y: 0,
-      px: 0,
-      py: 0,
+    const build = (): boolean => {
+      for (const ch of channels) {
+        const fc = ch.flow.current
+        const gc = ch.glyph.current
+        if (!fc || !gc) return false
+        const fx = fc.getContext('2d')
+        const gx = gc.getContext('2d')
+        const host = fc.parentElement
+        if (!fx || !gx || !host) return false
+
+        const trail = document.createElement('canvas')
+        const tx = trail.getContext('2d')
+        const heat = document.createElement('canvas')
+        const hx = heat.getContext('2d')
+        if (!tx || !hx) return false
+
+        const cw = Math.max(240, host.clientWidth)
+        const cheight = Math.max(90, host.clientHeight)
+        cellPx = cw < 700 ? 10 : 12
+
+        gc.width = Math.round(cw * dpr)
+        gc.height = Math.round(cheight * dpr)
+        for (const c of [fc, trail]) {
+          c.width = Math.round(cw * dprFlow)
+          c.height = Math.round(cheight * dprFlow)
+        }
+
+        const field = createField(cw / cheight)
+        buildMembrane(field, ch.spec)
+        field.wind = windFor(pace.current)
+        heat.width = field.w
+        heat.height = field.h
+
+        const stir = { on: false, x: 0, y: 0, px: 0, py: 0 }
+
+        const at = (e: PointerEvent): [number, number] => {
+          const box = host.getBoundingClientRect()
+          return [
+            ((e.clientX - box.left) / box.width) * field.w,
+            ((e.clientY - box.top) / box.height) * field.h,
+          ]
+        }
+        const down = (e: PointerEvent) => {
+          const [x, y] = at(e)
+          stir.on = true
+          stir.x = x
+          stir.y = y
+          stir.px = x
+          stir.py = y
+          host.dataset.stirred = 'true'
+        }
+        const moved = (e: PointerEvent) => {
+          if (!stir.on) return
+          const [x, y] = at(e)
+          stir.x = x
+          stir.y = y
+        }
+        const up = () => {
+          stir.on = false
+        }
+
+        host.addEventListener('pointerdown', down)
+        window.addEventListener('pointermove', moved)
+        window.addEventListener('pointerup', up)
+        window.addEventListener('pointercancel', up)
+
+        fx.setTransform(1, 0, 0, 1, 0, 0)
+        fx.fillStyle = '#0a0908'
+        fx.fillRect(0, 0, fc.width, fc.height)
+
+        runtimes.push({
+          spec: ch.spec,
+          field,
+          swarm: makeSwarm(field),
+          host,
+          fc,
+          fx,
+          gc,
+          gx,
+          trail,
+          tx,
+          heat,
+          hx,
+          raster: hx.createImageData(field.w, field.h),
+          cw,
+          ch: cheight,
+          /**
+           * Particles per unit area, not per channel.
+           *
+           * A fixed population in a phone-width channel is the same number of marks in a fifth of
+           * the pixels, which over-accumulates in the trail buffer and washes the whole field to
+           * white — and a washed-out channel cannot show a temperature. Scaled against the desktop
+           * box the constants were tuned in, with a floor so a narrow channel still reads as flow.
+           */
+          density: Math.max(0.32, Math.min(1, (cw * cheight) / (1400 * 230))),
+          stir,
+          detach: () => {
+            host.removeEventListener('pointerdown', down)
+            window.removeEventListener('pointermove', moved)
+            window.removeEventListener('pointerup', up)
+            window.removeEventListener('pointercancel', up)
+          },
+        })
+      }
+      return true
     }
 
-    const layout = () => {
-      dpr = Math.min(2, window.devicePixelRatio || 1)
-      dprFlow = Math.min(1.5, dpr)
-      cw = Math.max(240, host.clientWidth)
-      ch = Math.max(120, host.clientHeight)
-      cellPx = cw < 700 ? 11 : 13
-
-      gc.width = Math.round(cw * dpr)
-      gc.height = Math.round(ch * dpr)
-      for (const c of [fc, trail]) {
-        c.width = Math.round(cw * dprFlow)
-        c.height = Math.round(ch * dprFlow)
-      }
-
-      const columns = columnsFor(cw / ch)
-      if (columns !== field.w) {
-        field = createField(cw / ch)
-        swarm = makeSwarm(field)
-      }
-      heat.width = field.w
-      heat.height = field.h
-      raster = hx.createImageData(field.w, field.h)
-
-      field.wind = wind.current
-      const g = geometry.current
-      buildMembrane(field, g.dia, g.pitch, g.drag)
-
-      fx.setTransform(1, 0, 0, 1, 0, 0)
-      fx.fillStyle = '#0a0908'
-      fx.fillRect(0, 0, fc.width, fc.height)
+    const teardown = () => {
+      for (const r of runtimes) r.detach()
+      runtimes.length = 0
     }
 
-    layout()
+    if (!build()) {
+      teardown()
+      return
+    }
 
-    /* Geometry is rebuilt only when it actually changes. `buildMembrane` supersamples eight times
-       per row, which is nothing on its own and is not worth doing sixty times a second. */
-    let lastGeom = ''
+    /* Drawing
+       ---------------------------------------------------------------- */
 
-    const drawHeat = () => {
-      if (!raster) return
-      const d = raster.data
-      const lo = window0(field.wind)
-      const hi = window1(field.wind)
-      const span = Math.max(1e-4, hi - lo)
-      for (let i = 0; i < field.spd.length; i++) {
-        let t = (field.spd[i] - lo) / span
-        t = t < 0 ? 0 : t > 1 ? 1 : t
-        t = heatOf(t)
-        const [r, g, b] = ramp(t)
+    const drawHeat = (r: Runtime) => {
+      if (!r.raster) return
+      const d = r.raster.data
+      const { field } = r
+      for (let i = 0; i < field.temp.length; i++) {
+        const t = tempOf(field.temp[i])
+        const [cr, cg, cb] = ramp(t)
         const o = i * 4
-        d[o] = r | 0
-        d[o + 1] = g | 0
-        d[o + 2] = b | 0
-        d[o + 3] = field.solid[i] ? 0 : (Math.min(1, 0.1 + t * 1.25) * 236) | 0
+        d[o] = cr | 0
+        d[o + 1] = cg | 0
+        d[o + 2] = cb | 0
+        /* A dim floor at ambient rather than full transparency. The layer is still overwhelmingly
+           about heat, but a channel whose cool air is pure background reads as an empty box with a
+           fire at one end — the air has to be visibly there for its temperature to mean anything. */
+        d[o + 3] = field.solid[i] ? 0 : (Math.min(1, 0.13 + Math.pow(t, 1.15) * 1.1) * 228) | 0
       }
-      hx.putImageData(raster, 0, 0)
+      r.hx.putImageData(r.raster, 0, 0)
     }
 
-    const drawMembrane = (sx: number, sy: number) => {
+    const drawMembrane = (r: Runtime, sx: number, sy: number) => {
+      const { field, gx } = r
       const x0 = field.band * sx
       const width = field.thickness * sx
       gx.globalCompositeOperation = 'source-over'
       gx.fillStyle = `rgba(${SPECIMEN},0.12)`
-      gx.fillRect(x0, 0, width, ch)
+      gx.fillRect(x0, 0, width, r.ch)
       for (let j = 0; j < field.h; j++) {
         const closed = 1 - field.perm[field.band + j * field.w]
         if (closed <= 0.02) continue
         gx.fillStyle = `rgba(${SPECIMEN},${(0.09 + closed * 0.46).toFixed(3)})`
         gx.fillRect(x0, j * sy - 0.3, width, sy + 0.6)
       }
-      /* The witness line marks the upstream face — the plane the pressure drop is measured across,
-         so it is the one edge of the specimen worth naming in the accent. */
-      gx.fillStyle = WITNESS
-      gx.fillRect(x0 - 0.6, 0, 1, ch)
     }
 
-    const drawGlyphs = () => {
-      const cols = Math.ceil(cw / cellPx)
-      const rows = Math.ceil(ch / cellPx)
-      const lo = window0(field.wind)
-      const hi = window1(field.wind)
-      const span = Math.max(1e-4, hi - lo)
-      const base = layers.current.particles ? 0.34 : 1
+    const drawGlyphs = (r: Runtime) => {
+      const { field, gx } = r
+      const cols = Math.ceil(r.cw / cellPx)
+      const rows = Math.ceil(r.ch / cellPx)
+      const base = layers.current.particles ? 0.36 : 1
 
       gx.font = `${cellPx - 1}px ${MONO}`
       gx.textBaseline = 'middle'
       gx.textAlign = 'center'
       gx.globalCompositeOperation = 'lighter'
 
-      /* Bucketed by brightness and by glyph, so the whole layer costs 8 × 5 style changes rather
-         than one per mark. The fifth glyph is the low-speed dot, which has no direction to show. */
+      /* Bucketed by temperature and by glyph, so the layer costs 8 × 5 style changes rather than
+         one per mark. The fifth glyph is the low-speed dot, which has no direction to show. */
       const B = 8
       const bins: number[][][] = Array.from({ length: B }, () => [[], [], [], [], []])
+      const lo = 0.06 * field.wind
+      const hi = 2.3 * field.wind
 
-      for (let r = 0; r < rows; r++) {
-        const cy = r * cellPx + cellPx / 2
-        const gy = (cy / ch) * field.h
+      for (let rr = 0; rr < rows; rr++) {
+        const cy = rr * cellPx + cellPx / 2
+        const gy = (cy / r.ch) * field.h
         for (let c = 0; c < cols; c++) {
           const cx = c * cellPx + cellPx / 2
-          const gxv = (cx / cw) * field.w
+          const gxv = (cx / r.cw) * field.w
           const gi = gxv | 0
           const gj = gy | 0
           if (gi < 0 || gi >= field.w || gj < 0 || gj >= field.h) continue
           if (field.solid[gi + gj * field.w]) continue
           const uu = sample(field, field.u, gxv, gy)
           const vv = sample(field, field.v, gxv, gy)
-          let w = (Math.hypot(uu, vv) - lo) / span
-          w = w < 0 ? 0 : w > 1 ? 1 : w
-          if (w < 0.035) continue
-          const t = glyphOf(w)
+          /* Speed decides whether a mark is drawn and how bright; temperature decides its colour. */
+          let s = (Math.hypot(uu, vv) - lo) / Math.max(1e-4, hi - lo)
+          s = s < 0 ? 0 : s > 1 ? 1 : s
+          if (s < 0.03) continue
           let g = 4
-          if (t >= 0.075) {
+          if (s >= 0.07) {
             const q = Math.round(Math.atan2(vv, uu) / (Math.PI / 4))
             g = ((q % 4) + 4) % 4
           }
-          const bi = Math.min(B - 1, (Math.pow(t, 0.72) * (B - 1)) | 0)
-          bins[bi][g].push(cx, cy)
+          const t = tempOf(sample(field, field.temp, gxv, gy))
+          const bi = Math.min(B - 1, (t * (B - 1)) | 0)
+          bins[bi][g].push(cx, cy, s)
         }
       }
 
       for (let b = 0; b < B; b++) {
-        const t = (b + 0.5) / B
-        const [r, g, bl] = ramp(Math.min(1, 0.18 + t * 0.86))
-        gx.fillStyle = `rgb(${r | 0},${g | 0},${bl | 0})`
-        gx.globalAlpha = base * (0.22 + 0.78 * t)
+        const [cr, cg, cb] = ramp((b + 0.5) / B)
+        gx.fillStyle = `rgb(${cr | 0},${cg | 0},${cb | 0})`
         for (let gi = 0; gi < 5; gi++) {
           const list = bins[b][gi]
           if (!list.length) continue
-          const ch2 = gi === 4 ? '.' : GLYPHS[gi]
-          for (let i = 0; i < list.length; i += 2) gx.fillText(ch2, list[i], list[i + 1])
+          const chr = gi === 4 ? '.' : GLYPHS[gi]
+          for (let i = 0; i < list.length; i += 3) {
+            gx.globalAlpha = base * (0.2 + 0.8 * list[i + 2])
+            gx.fillText(chr, list[i], list[i + 1])
+          }
         }
       }
       gx.globalAlpha = 1
     }
 
-    const render = () => {
-      const sx = cw / field.w
-      const sy = ch / field.h
+    const render = (r: Runtime) => {
+      const { field, fx, gx, fc } = r
+      const sx = r.cw / field.w
+      const sy = r.ch / field.h
       const L = layers.current
 
       if (L.particles) {
-        const lo = window0(field.wind)
-        const hi = window1(field.wind)
+        const lo = 0.06 * field.wind
+        const hi = 2.3 * field.wind
         const span = Math.max(1e-4, hi - lo)
 
-        tx.setTransform(1, 0, 0, 1, 0, 0)
-        tx.globalCompositeOperation = 'destination-out'
-        tx.fillStyle = 'rgba(0,0,0,0.048)'
-        tx.fillRect(0, 0, trail.width, trail.height)
-        tx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
-        tx.globalCompositeOperation = 'lighter'
+        r.tx.setTransform(1, 0, 0, 1, 0, 0)
+        r.tx.globalCompositeOperation = 'destination-out'
+        r.tx.fillStyle = 'rgba(0,0,0,0.045)'
+        r.tx.fillRect(0, 0, r.trail.width, r.trail.height)
+        r.tx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
+        r.tx.globalCompositeOperation = 'lighter'
 
+        /* Bucketed by temperature — the colour axis — and given an alpha from speed, which is the
+           brightness axis. One bucket is one `fillStyle`; alpha varies inside it. */
         const buckets: number[][] = Array.from({ length: BINS }, () => [])
-        for (let i = 0; i < live; i++) {
-          let w = (sample(field, field.spd, swarm.x[i], swarm.y[i]) - lo) / span
-          w = w < 0 ? 0 : w > 1 ? 1 : w
-          const bi = Math.min(BINS - 1, (partOf(w) * (BINS - 1)) | 0)
-          buckets[bi].push(swarm.x[i] * sx, swarm.y[i] * sy)
+        const n = Math.round(live * r.density)
+        for (let i = 0; i < n; i++) {
+          const x = r.swarm.x[i]
+          const y = r.swarm.y[i]
+          let s = (sample(field, field.spd, x, y) - lo) / span
+          s = s < 0 ? 0 : s > 1 ? 1 : s
+          const t = tempOf(sample(field, field.temp, x, y))
+          const bi = Math.min(BINS - 1, (t * (BINS - 1)) | 0)
+          buckets[bi].push(x * sx, y * sy, s)
         }
         for (let b = 0; b < BINS; b++) {
           const list = buckets[b]
           if (!list.length) continue
-          tx.fillStyle = INK[b]
-          tx.globalAlpha = 0.3 + 0.7 * Math.pow(b / (BINS - 1), 0.9)
-          const size = b > BINS * 0.7 ? 1.5 : 1.1
-          for (let i = 0; i < list.length; i += 2) tx.fillRect(list[i], list[i + 1], size, size)
+          r.tx.fillStyle = INK[b]
+          const size = b > BINS * 0.62 ? 1.6 : 1.25
+          for (let i = 0; i < list.length; i += 3) {
+            r.tx.globalAlpha = 0.3 + 0.7 * Math.pow(list[i + 2], 0.8)
+            r.tx.fillRect(list[i], list[i + 1], size, size)
+          }
         }
-        tx.globalAlpha = 1
+        r.tx.globalAlpha = 1
       }
 
       fx.setTransform(1, 0, 0, 1, 0, 0)
@@ -431,20 +512,20 @@ export function usePerforation({
       fx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
 
       if (L.heat) {
-        drawHeat()
+        drawHeat(r)
         /* Smooth while it is an underglow, crisp when it is the subject. A 300-cell raster blown
-           up five times is a blur, and a blur that nothing is drawn on top of is just soft — so
-           with the streaklines off it becomes the solver's own cell grid instead, which is at
-           least honest about its resolution. */
+           up five times is a blur, and a blur with nothing drawn on top is just soft — so with the
+           streaklines off it becomes the solver's own cell grid, which is at least honest about
+           its resolution. */
         fx.imageSmoothingEnabled = L.particles
-        fx.globalAlpha = L.particles ? 0.48 : 0.94
-        fx.drawImage(heat, 0, 0, cw, ch)
+        fx.globalAlpha = L.particles ? 0.55 : 0.94
+        fx.drawImage(r.heat, 0, 0, r.cw, r.ch)
         fx.globalAlpha = 1
       }
       if (L.particles) {
         fx.globalCompositeOperation = 'lighter'
         fx.setTransform(1, 0, 0, 1, 0, 0)
-        fx.drawImage(trail, 0, 0)
+        fx.drawImage(r.trail, 0, 0)
         fx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
         fx.globalCompositeOperation = 'source-over'
       }
@@ -453,50 +534,37 @@ export function usePerforation({
          what makes running it at half rate free rather than flickery. */
       if (!L.glyphs || field.tick % glyphEvery === 0) {
         gx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        gx.clearRect(0, 0, cw, ch)
-        drawMembrane(sx, sy)
-        if (L.glyphs) drawGlyphs()
+        gx.clearRect(0, 0, r.cw, r.ch)
+        drawMembrane(r, sx, sy)
+        if (L.glyphs) drawGlyphs(r)
       }
     }
 
-    /* Input
-       ---------------------------------------------------------------- */
-
-    const at = (e: PointerEvent): [number, number] => {
-      const box = host.getBoundingClientRect()
-      return [
-        ((e.clientX - box.left) / box.width) * field.w,
-        ((e.clientY - box.top) / box.height) * field.h,
-      ]
-    }
-    const down = (e: PointerEvent) => {
-      const [x, y] = at(e)
-      stir.on = true
-      stir.x = x
-      stir.y = y
-      stir.px = x
-      stir.py = y
-      host.dataset.stirred = 'true'
-    }
-    const moved = (e: PointerEvent) => {
-      if (!stir.on) return
-      const [x, y] = at(e)
-      stir.x = x
-      stir.y = y
-    }
-    const up = () => {
-      stir.on = false
+    const advance = () => {
+      const wind = windFor(pace.current)
+      for (const r of runtimes) {
+        r.field.wind = wind
+        const s = r.stir
+        const push: Stir = s.on
+          ? { x: s.x, y: s.y, dx: (s.x - s.px) * 0.9, dy: (s.y - s.py) * 0.9 }
+          : null
+        if (push) {
+          s.px = s.x
+          s.py = s.y
+        }
+        step(r.field, push)
+        move(r.field, r.swarm, Math.round(live * r.density))
+      }
     }
 
-    host.addEventListener('pointerdown', down)
-    window.addEventListener('pointermove', moved)
-    window.addEventListener('pointerup', up)
-    window.addEventListener('pointercancel', up)
-
+    /* Resize rebuilds both channels from scratch — the grid is derived from the box. */
     let resizeTimer = 0
+    let relayout = false
     const onResize = () => {
       window.clearTimeout(resizeTimer)
-      resizeTimer = window.setTimeout(layout, 120)
+      resizeTimer = window.setTimeout(() => {
+        relayout = true
+      }, 140)
     }
     window.addEventListener('resize', onResize)
 
@@ -506,66 +574,48 @@ export function usePerforation({
     let frame = 0
     let last = performance.now()
     let qualityAt = last
-    let reportAt = last
 
     const tick = (now: number) => {
       frame = requestAnimationFrame(tick)
+
+      if (relayout) {
+        relayout = false
+        teardown()
+        if (!build()) return
+      }
 
       const delta = now - last
       last = now
       if (delta > 0 && delta < 400) frameMs += (delta - frameMs) * 0.12
 
+      /**
+       * The governor. Two fields per frame is twice the pressure solve, so this matters more than
+       * it did with one: it sheds glyph cadence first, then particle population, and never the
+       * heat raster — which is the cheapest layer and the one carrying the argument.
+       */
       if (now - qualityAt > 900) {
         qualityAt = now
-        if (frameMs > 32 && quality > 0.6) quality -= 0.1
+        if (frameMs > 32 && quality > 0.55) quality -= 0.1
         else if (frameMs < 20 && quality < 1) quality += 0.06
         quality = Math.min(1, quality)
-        live = Math.round(COUNT * (0.55 + 0.45 * quality))
+        live = Math.round(COUNT * (0.5 + 0.5 * quality))
         glyphEvery = frameMs > 40 ? 4 : frameMs > 26 ? 3 : 2
       }
 
-      const g = geometry.current
-      const key = `${g.dia}|${g.pitch}|${g.drag}`
-      if (key !== lastGeom) {
-        lastGeom = key
-        buildMembrane(field, g.dia, g.pitch, g.drag)
-      }
-      field.wind = wind.current
-
-      const push: Stir = stir.on
-        ? { x: stir.x, y: stir.y, dx: (stir.x - stir.px) * 0.9, dy: (stir.y - stir.py) * 0.9 }
-        : null
-      if (push) {
-        stir.px = stir.x
-        stir.py = stir.y
-      }
-
-      step(field, push)
-      move(field, swarm)
-      render()
-
-      /* Four times a second. The figures under the picture are a reading, and a reading that
-         changes its last digit sixty times a second reads as instability rather than as liveness —
-         the same mistake the old section's live figures made before they became a table. */
-      if (now - reportAt > 250) {
-        reportAt = now
-        report.current(measure(field))
-      }
+      advance()
+      for (const r of runtimes) render(r)
     }
 
     /**
-     * Reduced motion, and the section that isn't showing, both resolve the same way: solve enough
-     * to have a picture and a set of figures, then stop. A still frame of a settled field is a
-     * legitimate rendering of this section — it is a cross-section diagram either way.
+     * Reduced motion, and the section that isn't showing, resolve the same way: solve far enough
+     * for the microclimate to have settled, then stop. A still frame of a settled field is a
+     * legitimate rendering of this section — it is a cross-section diagram either way — and the
+     * temperature needs the longer run, because heat reaches steady state well after the flow
+     * does. The figures do not wait on this: they come from `predict()`, not from the field.
      */
     if (reduced || !showing) {
-      for (let i = 0; i < 90; i++) {
-        field.wind = wind.current
-        step(field, null)
-        move(field, swarm)
-      }
-      render()
-      report.current(measure(field))
+      for (let i = 0; i < 260; i++) advance()
+      for (const r of runtimes) render(r)
     } else {
       frame = requestAnimationFrame(tick)
     }
@@ -573,13 +623,10 @@ export function usePerforation({
     return () => {
       cancelAnimationFrame(frame)
       window.clearTimeout(resizeTimer)
-      host.removeEventListener('pointerdown', down)
-      window.removeEventListener('pointermove', moved)
-      window.removeEventListener('pointerup', up)
-      window.removeEventListener('pointercancel', up)
       window.removeEventListener('resize', onResize)
+      teardown()
     }
-    /* `wind`, `geometry` and `layers` are refs by design — they must not restart the field. */
+    /* `pace` and `layers` are refs by design — they must not restart the fields. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showing, reduced, flow, glyph, wind, geometry, layers])
+  }, [showing, reduced, channels, pace, layers])
 }
