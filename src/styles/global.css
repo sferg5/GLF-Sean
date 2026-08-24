@@ -4096,15 +4096,46 @@ button {
 
 .tunnel__channels {
   display: grid;
-  /* No gap: the two windows meet, and the pair reads as one instrument with two chambers rather
-     than two separate diagrams. The corner labels inside each window keep the boundary legible —
-     and a 1px hairline on the seam itself says "one machine, two chambers" better than a band of
-     page ever did. */
+  /* No gap of its own: the band of copy between the chambers is the separation now, and it sets
+     its own height with padding. The windows meet it edge to edge. */
   gap: 0;
 }
 
-.tunnel__channel + .tunnel__channel .tunnel__window {
-  border-top: 1px solid rgba(226, 221, 210, 0.18);
+/* The band between the chambers
+   The prose block's composition in miniature: the label out on the first column with two empty
+   ones after it, the statement running from the fifth to the twelfth. That gap is what makes it
+   read as the page speaking rather than as a caption pinned between two pictures.
+   ------------------------------------------------------------------ */
+
+.tunnel__between {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0 clamp(12px, 1.6vw, 28px);
+  padding: clamp(30px, 5.5svh, 72px) clamp(20px, 4vw, 72px);
+  background: var(--page);
+}
+
+/* Same clamp as `.prose__label`. */
+.tunnel__between-label {
+  grid-column: 1 / span 3;
+  align-self: start;
+  margin: 0;
+  padding-top: clamp(3px, 0.5vw, 9px);
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  line-height: 1.4;
+  color: var(--page-dim);
+}
+
+/* Same type as `.prose__lead`, one size down: this is an aside inside an instrument, not a
+   section of the page, and at the full 2.2rem it shouted over the headline above it. */
+.tunnel__between-lead {
+  grid-column: 5 / span 8;
+  margin: 0;
+  max-width: 44ch;
+  font-size: clamp(1.1rem, 1.75vw, 1.75rem);
+  line-height: 1.28;
+  letter-spacing: -0.014em;
+  text-wrap: pretty;
 }
 
 .tunnel__channel {
@@ -4271,18 +4302,71 @@ button {
   box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
 }
 
-.tunnel__layers,
-.tunnel__units {
+.tunnel__layers {
   display: flex;
   justify-content: center;
   gap: clamp(14px, 2vw, 26px);
   font-size: clamp(0.82rem, 0.95vw, 0.94rem);
 }
 
-/* Tucked up under the headline's own margin rather than taking a full frame row — it is an aside
-   about the figures, and a full row gave it the same standing as the figures themselves. */
+/* The units, as a segmented pill.
+   The one piece of app furniture in the section, and it earns it: metric/imperial is a two-state
+   switch, not a pair of links, and the sliding thumb says "one or the other" in a way two
+   underlined words never quite did. The thumb is the container's ::before, slid by the data
+   attribute React stamps on it, so the buttons stay plain text laid over the top.
+   ------------------------------------------------------------------ */
 .tunnel__units {
-  margin-top: calc(-1 * clamp(6px, 1.6svh, 20px));
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 3px;
+  border-radius: 100px;
+  background: rgba(20, 16, 15, 0.07);
+}
+
+.tunnel__units::before {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc(50% - 3px);
+  border-radius: 100px;
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(20, 16, 15, 0.16),
+    0 0 0 0.5px rgba(20, 16, 15, 0.04);
+  transition: translate 0.18s var(--ease-out-quad);
+}
+
+.tunnel__units[data-units='imperial']::before {
+  translate: 100% 0;
+}
+
+.tunnel__unit {
+  position: relative;
+  z-index: 1;
+  padding: 7px 20px;
+  border: 0;
+  border-radius: 100px;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  text-transform: lowercase;
+  color: var(--page-dim);
+  transition: color 0.18s var(--ease-out-quad);
+}
+
+.tunnel__unit[aria-pressed='true'] {
+  color: var(--page-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tunnel__units::before,
+  .tunnel__unit {
+    transition: none;
+  }
 }
 
 .tunnel__layer {
@@ -4356,6 +4440,15 @@ button {
   .tunnel__controls {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+  }
+
+  .tunnel__between-label,
+  .tunnel__between-lead {
+    grid-column: 1 / -1;
+  }
+
+  .tunnel__between-label {
+    margin-bottom: 8px;
   }
 
   /* The two corner labels would meet in the middle on a phone, so they stack in the left corner

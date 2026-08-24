@@ -162,15 +162,14 @@ export function Perforation() {
       <div className="tunnel__frame">
         <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
-        {/* Units, above the figures they re-express. Same treatment as the layer switches at the
-            foot — plain words, the chosen one underlined — because both are asides about how to
-            show the thing, not part of the thing. */}
-        <div className="tunnel__units tunnel__inset">
+        {/* Units, above the figures they re-express — a segmented pill, with the thumb slid by
+            the container's data attribute so the two buttons stay plain text over it. */}
+        <div className="tunnel__units" data-units={units}>
           {(['metric', 'imperial'] as const).map((u) => (
             <button
               key={u}
               type="button"
-              className="tunnel__layer"
+              className="tunnel__unit"
               aria-pressed={units === u}
               onClick={() => setUnits(u)}
             >
@@ -232,6 +231,19 @@ export function Perforation() {
             glyph={nowGlyph}
             hint="drag inside to disturb the flow"
           />
+
+          {/* The band between the chambers, and it earns its height by saying what changed.
+              Same composition as the prose block upstairs — the label out on the first column,
+              the statement running from the fifth — so the page's voice interrupts the
+              instrument, rather than a caption floating between two pictures. */}
+          <div className="tunnel__between">
+            <p className="tunnel__between-label">about the perforations</p>
+            <p className="tunnel__between-lead">
+              more air is not one bigger hole — it is thirteen finer perforations where today's
+              knit cuts seven.
+            </p>
+          </div>
+
           <Channel
             spec={FABRICS[1]}
             open={open[1]}
