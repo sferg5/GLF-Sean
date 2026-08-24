@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { SiteNav } from './components/SiteNav'
+import { CalloutLayoutProvider } from './components/CalloutLayout'
 import { ShoesPage } from './pages/ShoesPage'
 import { GuestJourneyPage } from './pages/GuestJourneyPage'
 import { usePage } from './lib/page'
@@ -48,7 +49,18 @@ export function App() {
       ) : page === 'guest-journey' ? (
         <GuestJourneyPage />
       ) : (
-        <ShoesPage />
+        /**
+         * The callout store wraps the shoe page and not the app.
+         *
+         * `XRayCallouts` and `CalloutEditor` are the only consumers and both are the shoe page's,
+         * so hoisting the provider to the root would buy nothing and cost two things that are
+         * actively wrong elsewhere: it owns a global `e` keybinding that opens the callout editor,
+         * and it writes the layout to `localStorage` on every change. Neither should fire while
+         * someone is reading about a knit on show zero.
+         */
+        <CalloutLayoutProvider>
+          <ShoesPage />
+        </CalloutLayoutProvider>
       )}
     </>
   )
