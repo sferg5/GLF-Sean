@@ -3970,58 +3970,81 @@ button {
 
 /* The perforation tunnel
    ==================================================================
-   The airflow bench test on the show-zero page, replacing the two-channel comparison.
+   The airflow bench test on the show-zero page.
 
-   Same room as `.fabric` was, and deliberately the same: a graded warm-neutral wall with a cavity
-   cut into it, the type taking its own inset while the channel bleeds. What differs is inside the
-   cavity — that section was one ink at two brightnesses, and this one is the brand red used as a
-   scale, which is a decision the canvas makes and this file only has to leave room for.
+   **Light, like every other section on this page.** It was a dark instrument room carried over
+   from the two-channel test it replaced, and on a page whose other two blocks are the hero and a
+   block of prose on `--page`, a section that arrives near-black is a different document for one
+   screen. The dark is now only inside the channel, where it has a job: it is the ground the
+   velocity ramp is exposed against, and the ramp is the one thing here that is not the page's
+   palette.
+
+   So the composition is the prose section's — the same twelve columns, the same insets, the same
+   `--page-ink` on `--page` — with a full-bleed window cut through it.
    ------------------------------------------------------------------ */
 
 .tunnel {
+  /* Same polarity and the same three values as `.prose` / `.faq` / `.journey`. Declared rather
+     than inherited because those three share one rule and this is not one of them. */
+  --page-ink: #14100f;
+  --page-dim: rgba(20, 16, 15, 0.56);
+  --page-rule: rgba(20, 16, 15, 0.14);
+
   position: relative;
-  /* Its own stacking context, like the reel and the film: the field's glow is additive inside a
-     canvas and must not be able to reach a neighbour. */
+  /* Its own stacking context: the field's glow is additive inside a canvas and must not reach a
+     neighbour. */
   z-index: 1;
   isolation: isolate;
-  /* A screen, not a pin. `svh` so a mobile toolbar arriving doesn't resize the channel under the
-     reader and re-rasterise three buffers. */
+  /* A screen, like the prose above it — and `svh`, so a mobile toolbar arriving doesn't resize
+     the channel under the reader and re-rasterise three buffers. */
   min-height: 100svh;
   display: grid;
   align-content: center;
-  padding: clamp(24px, 5svh, 64px) 0;
-  color: rgba(240, 238, 235, 0.92);
-  background: radial-gradient(130% 100% at 50% 18%, #23211f 0%, #161413 58%, #0d0c0b 100%);
+  /* Block padding only. The type takes the page's own inset per element; the channel takes none,
+     which is what lets it bleed. */
+  padding: clamp(40px, 7vh, 96px) 0;
+  background: var(--page);
+  color: var(--page-ink);
 }
 
-/* `minmax(0, 1fr)` and not `1fr`: a grid track grows to its widest item's min-content, and one row
-   that couldn't shrink would stretch the track past the viewport and take the channel with it. */
+/* `minmax(0, 1fr)` and not `1fr`: a grid track grows to its widest item's min-content, and one
+   row that couldn't shrink would stretch the track past the viewport and take the channel with
+   it. */
 .tunnel__frame {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(10px, 1.8svh, 22px);
+  gap: clamp(12px, 2svh, 26px);
 }
 
+/* Everything that is type takes the prose section's horizontal inset, so the left edge of this
+   section's words lines up with the left edge of the words above it. */
+.tunnel__inset {
+  padding-inline: clamp(20px, 4vw, 72px);
+}
+
+/* The statement, on the same clamp as `.faq__lead` and `.journey__lead` — this is the third of
+   the three display lines on the page and there is no reason for it to be a different size. */
 .tunnel__title {
   margin: 0;
-  padding: 0 clamp(20px, 4vw, 64px);
-  max-width: 22ch;
-  font-size: clamp(1.7rem, 3.6vw, 3.1rem);
-  line-height: 1.04;
-  letter-spacing: -0.024em;
+  max-width: 20ch;
+  font-size: clamp(1.9rem, 4.4vw, 4.15rem);
+  font-weight: var(--weight-heading);
+  text-transform: lowercase;
+  line-height: 1.06;
+  letter-spacing: -0.021em;
   text-wrap: balance;
 }
 
-/* The axis. Same geometry and same two marks as the moisture test's, so a reader who has seen one
-   cross-section on this page already knows which end is the skin. */
+/* The axis
+   Two marks, in the page's own small type rather than in tracked mono. The mono was the single
+   biggest reason this section read as a different site: nothing else on the page sets a label
+   that way.
+   ------------------------------------------------------------------ */
 .tunnel__axis {
   position: relative;
-  height: 13px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(226, 220, 212, 0.44);
+  height: 1.4em;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  color: var(--page-dim);
 }
 
 .tunnel__mark {
@@ -4030,25 +4053,26 @@ button {
   white-space: nowrap;
 }
 
+/* The only mark whose position is data — it has to land on the fraction the physics puts the
+   wall at. */
 .tunnel__mark[data-align='centre'] {
   translate: -50% 0;
 }
 
 .tunnel__mark[data-align='start'] {
-  left: clamp(20px, 4vw, 64px);
+  left: clamp(20px, 4vw, 72px);
 }
 
 /* The channel
-   One specimen where the old section had two channels, so it takes the height both of them had.
-   Edge to edge and no radius, for the reason the old one gave: the point of the bleed is that the
-   diagram has no frame.
+   The one dark thing left, and full bleed. No radius: a rounded corner on a full-bleed element
+   is a card pretending to be a window, and the point of the bleed is that the diagram has no
+   frame.
    ------------------------------------------------------------------ */
 
 .tunnel__channel {
   position: relative;
-  height: clamp(240px, 44svh, 520px);
+  height: clamp(200px, 40svh, 460px);
   overflow: clip;
-  border-block: 1px solid rgba(226, 220, 212, 0.09);
   background: #0a0908;
   cursor: crosshair;
   /* The channel is a control — a drag in it pushes the flow — so a drag must not select the type
@@ -4057,11 +4081,18 @@ button {
   user-select: none;
 }
 
-/* Edge falloff, over the canvases rather than in them.
-   The approach flow is genuinely uniform — that is what an approach flow is — so at full bleed the
-   upstream third arrives as a flat wall of one value running straight into the window frame. A
-   gradient laid over it gives the channel a lit centre and dark ends, which is where an
-   instrument's light actually comes from, and costs nothing per frame. */
+.tunnel__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Edge falloff, over the canvases rather than in them. The approach flow is genuinely uniform —
+   that is what an approach flow is — so at full bleed the upstream third runs as a flat wall of
+   one value straight into the window. A gradient laid over it gives the channel a lit centre and
+   dark ends, which is where an instrument's light comes from, and costs nothing per frame. */
 .tunnel__channel::after {
   content: '';
   position: absolute;
@@ -4074,220 +4105,93 @@ button {
     linear-gradient(0deg, rgba(10, 9, 8, 0.36) 0%, rgba(10, 9, 8, 0) 10%);
 }
 
-.tunnel__canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* The one piece of type inside the picture, and it goes as soon as it has been obeyed — a standing
-   instruction is furniture. */
-.tunnel__hint {
-  position: absolute;
-  inset: auto 0 clamp(8px, 1.6svh, 18px);
-  margin: 0;
-  text-align: center;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: rgba(240, 238, 235, 0.34);
-  pointer-events: none;
-  z-index: 1;
-  transition: opacity 0.45s var(--ease-out-quad);
-}
-
-.tunnel__channel[data-stirred='true'] .tunnel__hint {
-  opacity: 0;
-}
-
 /* The controls
-   Under the picture and above the figures, the position the old pace slider earned by being the
-   thing that connects the two. Collapsible because on a display these are furniture once somebody
-   has set them, and the strip that stays says what the setting is.
+   One row of specimens, three sliders, and the layer switches. The collapse, the pills, the mini
+   summary bar and the arc dial are all gone: every one of them was a dashboard convention, and
+   there is not a pill or a gauge anywhere else on this site.
    ------------------------------------------------------------------ */
 
 .tunnel__controls {
-  padding: 0 clamp(20px, 4vw, 64px);
   display: grid;
-  gap: clamp(8px, 1.4svh, 16px);
-}
-
-.tunnel__bar {
-  display: flex;
-  align-items: center;
-  gap: clamp(12px, 2vw, 26px);
-  flex-wrap: wrap;
-}
-
-.tunnel__collapse,
-.tunnel__layer {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(226, 220, 212, 0.52);
-  background: none;
-  border: 1px solid rgba(226, 220, 212, 0.16);
-  border-radius: 100px;
-  padding: 7px 13px;
-  cursor: pointer;
-  transition:
-    color 0.14s var(--ease-out-quad),
-    border-color 0.14s var(--ease-out-quad),
-    background-color 0.14s var(--ease-out-quad);
-}
-
-.tunnel__collapse:hover,
-.tunnel__layer:hover {
-  color: rgba(240, 238, 235, 0.92);
-  border-color: rgba(226, 220, 212, 0.34);
-}
-
-/* Pressed is the ink, not the accent. The accent is the velocity scale inside the canvas, and a
-   toggle wearing the same red as the flow field would read as part of the measurement. */
-.tunnel__layer[aria-pressed='true'] {
-  color: #17150f;
-  background: rgba(238, 234, 226, 0.9);
-  border-color: transparent;
-}
-
-.tunnel__specimen {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-right: auto;
-  font-size: clamp(0.95rem, 1.5vw, 1.15rem);
-  font-weight: var(--weight-heading);
-  letter-spacing: -0.014em;
-}
-
-.tunnel__specimen i {
-  font-style: normal;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  color: #ee3b33;
-  font-variant-numeric: tabular-nums;
-}
-
-.tunnel__layers {
-  display: inline-flex;
-  gap: 5px;
-}
-
-/* The panel: the specimens on the left, the three geometry sliders on the right. One column under
-   900px, where a seven-row rail beside three sliders is two things too narrow to use. */
-.tunnel__panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: clamp(14px, 2.4vw, 34px);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(18px, 3vh, 36px) clamp(12px, 1.6vw, 28px);
   align-items: start;
-  padding-top: clamp(4px, 0.8svh, 10px);
-  border-top: 1px solid rgba(226, 220, 212, 0.09);
 }
 
-.tunnel__rail {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 2px;
+/* The specimens, on the eight columns the prose gives its text. A wrapping row of words rather
+   than a rail of cards — the list is seven short names and a percentage, and a card apiece was
+   furniture around content that is one line long. */
+.tunnel__specimens {
+  grid-column: 1 / span 7;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px clamp(14px, 1.8vw, 26px);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .tunnel__fab {
-  display: grid;
-  gap: 1px;
-  width: 100%;
-  text-align: left;
-  padding: 7px 10px 8px;
-  background: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0;
   border: 0;
-  border-left: 2px solid transparent;
+  background: none;
+  color: var(--page-dim);
   cursor: pointer;
-  color: inherit;
-  transition: background-color 0.14s var(--ease-out-quad);
+  font-size: clamp(0.92rem, 1.1vw, 1.06rem);
+  line-height: 1.5;
+  text-transform: lowercase;
+  transition: color 0.14s var(--ease-out-quad);
 }
 
 .tunnel__fab:hover {
-  background: rgba(240, 238, 235, 0.05);
+  color: var(--page-ink);
 }
 
+/* Selected is ink and a rule under it, which is how a choice reads in type. No fill, no border,
+   no left bar. */
 .tunnel__fab[aria-pressed='true'] {
-  background: rgba(240, 238, 235, 0.08);
-  border-left-color: #ee3b33;
+  color: var(--page-ink);
+  box-shadow: inset 0 -1px 0 0 var(--page-ink);
 }
 
-.tunnel__fab-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.tunnel__fab-top b {
-  font-weight: var(--weight-heading);
-  font-size: 12.5px;
-  letter-spacing: -0.01em;
-}
-
-.tunnel__fab-top em {
+.tunnel__fab i {
   font-style: normal;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: rgba(226, 220, 212, 0.44);
+  font-size: 0.82em;
+  color: var(--page-dim);
   font-variant-numeric: tabular-nums;
 }
 
-.tunnel__fab[aria-pressed='true'] .tunnel__fab-top em {
+.tunnel__fab[aria-pressed='true'] i {
   color: #ee3b33;
 }
 
-.tunnel__fab-note {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(226, 220, 212, 0.3);
-  /* One line, always. A rail row that grows to two lines when its neighbour doesn't makes the grid
-     look broken, and the construction is a label rather than a sentence. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* The sliders. Built for a finger, same as the pace slider was — this is going on an iPad, and an
-   11px thumb on a 2px track is a mouse's control. */
+/* The sliders, on the last four columns. */
 .tunnel__dials {
+  grid-column: 9 / span 4;
   display: grid;
-  gap: clamp(6px, 1.1svh, 12px);
+  gap: clamp(8px, 1.3vh, 14px);
 }
 
 .tunnel__dial-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(10px, 1.6vw, 20px);
+  gap: clamp(10px, 1.4vw, 18px);
   cursor: pointer;
   user-select: none;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
 }
 
 .tunnel__dial-row > span {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: rgba(226, 220, 212, 0.44);
+  color: var(--page-dim);
   white-space: nowrap;
 }
 
 .tunnel__dial-row > output {
-  font-family: var(--mono);
-  font-size: 11.5px;
-  color: rgba(240, 238, 235, 0.92);
+  color: var(--page-ink);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-align: right;
@@ -4299,42 +4203,38 @@ button {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 22px;
+  height: 20px;
   background: none;
   margin: 0;
   cursor: ew-resize;
 }
 
 .tunnel__dial-row input[type='range']::-webkit-slider-runnable-track {
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(226, 220, 212, 0.16);
+  height: 1px;
+  background: var(--page-rule);
 }
 
 .tunnel__dial-row input[type='range']::-moz-range-track {
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(226, 220, 212, 0.16);
+  height: 1px;
+  background: var(--page-rule);
 }
 
 .tunnel__dial-row input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -6.5px;
+  width: 13px;
+  height: 13px;
+  margin-top: -6px;
   border: 0;
   border-radius: 50%;
   background: #ee3b33;
-  box-shadow: 0 0 0 4px rgba(238, 59, 51, 0.16);
 }
 
 .tunnel__dial-row input[type='range']::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 13px;
+  height: 13px;
   border: 0;
   border-radius: 50%;
   background: #ee3b33;
-  box-shadow: 0 0 0 4px rgba(238, 59, 51, 0.16);
 }
 
 .tunnel__dial-row input[type='range']:focus {
@@ -4343,89 +4243,95 @@ button {
 
 .tunnel__dial-row input[type='range']:focus-visible::-webkit-slider-thumb,
 .tunnel__dial-row input[type='range']:hover::-webkit-slider-thumb {
-  box-shadow: 0 0 0 6px rgba(238, 59, 51, 0.24);
+  box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
 }
 
 .tunnel__dial-row input[type='range']:focus-visible::-moz-range-thumb,
 .tunnel__dial-row input[type='range']:hover::-moz-range-thumb {
-  box-shadow: 0 0 0 6px rgba(238, 59, 51, 0.24);
+  box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
+}
+
+/* The layer switches and the drag hint share the line under the channel — one is what you can
+   turn off, the other is what you can do, and both are asides. */
+.tunnel__aside {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: clamp(14px, 2vw, 28px);
+  flex-wrap: wrap;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  color: var(--page-dim);
+}
+
+.tunnel__layers {
+  display: inline-flex;
+  gap: clamp(12px, 1.6vw, 22px);
+}
+
+.tunnel__layer {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--page-dim);
+  font: inherit;
+  text-transform: lowercase;
+  transition: color 0.14s var(--ease-out-quad);
+}
+
+.tunnel__layer:hover {
+  color: var(--page-ink);
+}
+
+.tunnel__layer[aria-pressed='true'] {
+  color: var(--page-ink);
+  box-shadow: inset 0 -1px 0 0 var(--page-ink);
+}
+
+.tunnel__hint {
+  margin: 0;
 }
 
 /* The figures
-   The dial is open area, because that is the one number the reader is moving. The three beside it
-   are what the field did about it.
+   The prose section's facts, exactly: a definition list on the same eight columns, labels dim
+   above values. The arc gauge and the three 2.3rem numerals are gone — they were an instrument
+   panel, and the page states its facts in type.
+
+   The values are set larger than `.prose__fact dd` and nothing else differs. These are the
+   measurement the section exists to produce, where the prose's facts are a spec card; a little
+   size is the whole distinction between the two.
    ------------------------------------------------------------------ */
 
-.tunnel__verdict {
-  display: flex;
-  align-items: center;
-  gap: clamp(18px, 3.4vw, 52px);
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 0 clamp(20px, 4vw, 64px);
-}
-
-.tunnel__gauge {
-  position: relative;
-  width: 102px;
-  flex: 0 0 102px;
-}
-
-.tunnel__gauge svg {
-  display: block;
-  width: 102px;
-  height: 74px;
-}
-
-.tunnel__gauge b {
-  position: absolute;
-  inset: 30px 0 auto;
-  text-align: center;
-  font-size: 19px;
-  font-weight: var(--weight-heading);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.tunnel__gauge b i {
-  font-style: normal;
-  font-size: 9px;
-  font-weight: var(--weight-body);
-  color: rgba(226, 220, 212, 0.5);
-  margin-left: 1px;
-}
-
-.tunnel__gauge > span {
-  display: block;
-  margin-top: -4px;
-  text-align: center;
-  font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: rgba(226, 220, 212, 0.4);
-}
-
-.tunnel__figure {
+.tunnel__facts {
   display: grid;
-  gap: 1px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(14px, 2vh, 24px) clamp(12px, 1.6vw, 28px);
   margin: 0;
+  padding-top: clamp(14px, 2.4vh, 28px);
+  border-top: 1px solid var(--page-rule);
 }
 
-.tunnel__figure > b {
-  font-size: clamp(1.5rem, 3vw, 2.3rem);
-  font-weight: var(--weight-heading);
-  line-height: 1;
-  letter-spacing: -0.03em;
+.tunnel__fact dt {
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  line-height: 1.45;
+  color: var(--page-dim);
+  text-wrap: pretty;
+}
+
+.tunnel__fact dd {
+  margin: 3px 0 0;
+  font-size: clamp(1.15rem, 1.7vw, 1.6rem);
+  line-height: 1.2;
+  letter-spacing: -0.018em;
   font-variant-numeric: tabular-nums;
 }
 
-.tunnel__figure > span {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: rgba(226, 220, 212, 0.44);
+.tunnel__fact dd i {
+  font-style: normal;
+  font-size: 0.56em;
+  letter-spacing: 0;
+  color: var(--page-dim);
+  margin-left: 3px;
 }
 
 /* Said once, in words, for anything that can't see the canvas. */
@@ -4442,24 +4348,19 @@ button {
 }
 
 @media (max-width: 900px) {
-  .tunnel__panel {
-    grid-template-columns: minmax(0, 1fr);
+  .tunnel__specimens,
+  .tunnel__dials {
+    grid-column: 1 / -1;
   }
 
-  .tunnel__specimen {
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .tunnel__figure > b {
-    font-size: 1.4rem;
+  .tunnel__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* The still frame is a legitimate rendering of this section — it is a cross-section diagram either
-   way — so reduced motion keeps the picture and drops the loop, which `lab/Perforation.tsx` does.
-   All that's left here is the hint, which is an instruction for a gesture nobody is being invited
-   to make. */
+/* The still frame is a legitimate rendering of this section — it is a cross-section diagram
+   either way — so reduced motion keeps the picture and drops the loop, which `lab/Perforation.tsx`
+   does. All that's left here is the hint, which invites a gesture nobody is being offered. */
 @media (prefers-reduced-motion: reduce) {
   .tunnel__hint {
     display: none;
@@ -4467,11 +4368,11 @@ button {
 }
 
 /* The chunk boundary
-   What stands in for the show-zero page while its bundle arrives. The wall, at the height of a
-   screen — anything lighter is a flash of the wrong document. See `PageFallback` in `App.tsx`.
+   What stands in for the show-zero page while its bundle arrives. The page's own wall, at the
+   height of a screen. See `PageFallback` in `App.tsx`.
    ------------------------------------------------------------------ */
 
 .page-wait {
   min-height: 100svh;
-  background: #0d0c0b;
+  background: var(--page);
 }

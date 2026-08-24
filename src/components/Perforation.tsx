@@ -80,7 +80,6 @@ export function Perforation() {
   const [pitch, setPitch] = useState(byId(REFERENCE).pitch)
   const [drag, setDrag] = useState(byId(REFERENCE).drag)
   const [layers, setLayers] = useState<Layers>({ particles: true, glyphs: true, heat: true })
-  const [open, setOpen] = useState(true)
 
   /**
    * The reading, at 4Hz off the solved field.
@@ -189,14 +188,10 @@ export function Perforation() {
     })
   }, [reading, wind, dia, pitch, fabric, specified, reduced])
 
-  /* The dial's arc: 290 degrees with the gap at the bottom, so its length is a fixed number the
-     fill's dash offset is a fraction of. */
-  const DIAL = 157
-
   return (
     <section className="tunnel" ref={section}>
       <div className="tunnel__frame">
-        <h2 className="tunnel__title">{TITLE}</h2>
+        <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
         <div className="tunnel__axis" aria-hidden="true">
           {MARKS.map((mark) => (
@@ -211,154 +206,122 @@ export function Perforation() {
           ))}
         </div>
 
-        {/* The channel. Full bleed and no radius, same as the old one: a rounded corner on a
-            full-bleed element is a card pretending to be a window. */}
         <div className="tunnel__channel">
           <canvas className="tunnel__canvas" ref={flow} aria-hidden="true" />
           <canvas className="tunnel__canvas" ref={glyph} aria-hidden="true" />
-          <p className="tunnel__hint" aria-hidden="true">
-            drag inside the channel to disturb the flow
-          </p>
         </div>
 
-        {/* The controls, on one strip under the picture — the position the old pace slider earned
-            by being the thing that connects the diagram to the figures. Collapsible because on a
-            display this is furniture once somebody has set it. */}
-        <div className="tunnel__controls" data-open={open}>
-          <div className="tunnel__bar">
-            <button
-              type="button"
-              className="tunnel__collapse"
-              aria-expanded={open}
-              onClick={() => setOpen((v) => !v)}
-            >
-              {open ? 'hide controls' : 'controls'}
-            </button>
-            <span className="tunnel__specimen">
-              {current ? current.name.toLowerCase() : 'custom geometry'}
-              <i>{porosity.toFixed(1)}% open</i>
-            </span>
-            <span className="tunnel__layers">
-              {LAYER_NAMES.map(({ key, label }) => (
+        {/* What you can turn off, and what you can do. Both are asides, so they share one line
+            under the picture rather than each claiming a row of chrome. */}
+        <div className="tunnel__aside tunnel__inset">
+          <span className="tunnel__layers">
+            {LAYER_NAMES.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                className="tunnel__layer"
+                aria-pressed={layers[key]}
+                onClick={() => setLayers((v) => ({ ...v, [key]: !v[key] }))}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+          <p className="tunnel__hint">drag inside the channel to disturb the flow</p>
+        </div>
+
+        <div className="tunnel__controls tunnel__inset">
+          {/* Seven names and a percentage. A card apiece was furniture around one line of
+              content — selected is ink with a rule under it, which is how a choice reads in
+              type. */}
+          <ul className="tunnel__specimens">
+            {FABRICS.map((spec, i) => (
+              <li key={spec.id}>
                 <button
-                  key={key}
                   type="button"
-                  className="tunnel__layer"
-                  aria-pressed={layers[key]}
-                  onClick={() => setLayers((v) => ({ ...v, [key]: !v[key] }))}
+                  className="tunnel__fab"
+                  aria-pressed={fabric === spec.id}
+                  onClick={() => pick(spec.id)}
                 >
-                  {label}
+                  {spec.name.toLowerCase()}
+                  <i>{(specified[i] * 100).toFixed(1)}%</i>
                 </button>
-              ))}
-            </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="tunnel__dials">
+            <label className="tunnel__dial-row">
+              <span>freestream</span>
+              <input
+                type="range"
+                min={WIND.min}
+                max={WIND.max}
+                step={WIND.step}
+                value={wind}
+                onChange={(e) => setWind(Number(e.currentTarget.value))}
+              />
+              <output>{wind.toFixed(1)} m/s</output>
+            </label>
+            <label className="tunnel__dial-row">
+              <span>perforation ø</span>
+              <input
+                type="range"
+                min={DIA.min}
+                max={DIA.max}
+                step={DIA.step}
+                value={dia}
+                onChange={(e) => onDia(Number(e.currentTarget.value))}
+              />
+              <output>{dia.toFixed(2)} mm</output>
+            </label>
+            <label className="tunnel__dial-row">
+              <span>hole pitch</span>
+              <input
+                type="range"
+                min={PITCH.min}
+                max={PITCH.max}
+                step={PITCH.step}
+                value={pitch}
+                onChange={(e) => onPitch(Number(e.currentTarget.value))}
+              />
+              <output>{pitch.toFixed(2)} mm</output>
+            </label>
           </div>
-
-          {open && (
-            <div className="tunnel__panel">
-              {/* The specimens, ordered by open area rather than by family — the order is the
-                  argument, and family is a label on the row. */}
-              <ul className="tunnel__rail">
-                {FABRICS.map((spec, i) => (
-                  <li key={spec.id}>
-                    <button
-                      type="button"
-                      className="tunnel__fab"
-                      aria-pressed={fabric === spec.id}
-                      onClick={() => pick(spec.id)}
-                    >
-                      <span className="tunnel__fab-top">
-                        <b>{spec.name.toLowerCase()}</b>
-                        <em>{(specified[i] * 100).toFixed(1)}%</em>
-                      </span>
-                      <span className="tunnel__fab-note">{spec.note.toLowerCase()}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="tunnel__dials">
-                <label className="tunnel__dial-row">
-                  <span>freestream</span>
-                  <input
-                    type="range"
-                    min={WIND.min}
-                    max={WIND.max}
-                    step={WIND.step}
-                    value={wind}
-                    onChange={(e) => setWind(Number(e.currentTarget.value))}
-                  />
-                  <output>{wind.toFixed(1)} m/s</output>
-                </label>
-                <label className="tunnel__dial-row">
-                  <span>perforation ø</span>
-                  <input
-                    type="range"
-                    min={DIA.min}
-                    max={DIA.max}
-                    step={DIA.step}
-                    value={dia}
-                    onChange={(e) => onDia(Number(e.currentTarget.value))}
-                  />
-                  <output>{dia.toFixed(2)} mm</output>
-                </label>
-                <label className="tunnel__dial-row">
-                  <span>hole pitch</span>
-                  <input
-                    type="range"
-                    min={PITCH.min}
-                    max={PITCH.max}
-                    step={PITCH.step}
-                    value={pitch}
-                    onChange={(e) => onPitch(Number(e.currentTarget.value))}
-                  />
-                  <output>{pitch.toFixed(2)} mm</output>
-                </label>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* The figures. The dial is open area because that is the one number the reader is
-            actually moving; the rest are what the field did about it. */}
-        <footer className="tunnel__verdict" aria-hidden="true">
-          <div className="tunnel__gauge">
-            <svg viewBox="0 0 102 74">
-              <path
-                d="M 33.9 67.5 A 31 31 0 1 1 68.1 67.5"
-                fill="none"
-                stroke="rgba(226,220,212,0.16)"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 33.9 67.5 A 31 31 0 1 1 68.1 67.5"
-                fill="none"
-                stroke="#ee3b33"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray={DIAL}
-                strokeDashoffset={DIAL * (1 - Math.min(1, porosity / 100))}
-              />
-            </svg>
-            <b>
+        {/* The prose section's facts, on the same composition. Open area leads because it is the
+            one number the reader is moving; the other three are what the field did about it. */}
+        <dl className="tunnel__facts tunnel__inset" aria-hidden="true">
+          <div className="tunnel__fact">
+            <dt>open area</dt>
+            <dd>
               {porosity.toFixed(1)}
               <i>%</i>
-            </b>
-            <span>open area</span>
+            </dd>
           </div>
-          <p className="tunnel__figure">
-            <b>{reading ? reading.permeability.toFixed(1) : '—'}</b>
-            <span>cfm/ft² permeability</span>
-          </p>
-          <p className="tunnel__figure">
-            <b>{reading ? reading.drop.toFixed(1) : '—'}</b>
-            <span>Pa pressure drop</span>
-          </p>
-          <p className="tunnel__figure">
-            <b>{reading ? reading.jet.toFixed(1) : '—'}</b>
-            <span>m/s peak jet</span>
-          </p>
-        </footer>
+          <div className="tunnel__fact">
+            <dt>air permeability</dt>
+            <dd>
+              {reading ? reading.permeability.toFixed(1) : '—'}
+              <i>cfm/ft²</i>
+            </dd>
+          </div>
+          <div className="tunnel__fact">
+            <dt>pressure drop</dt>
+            <dd>
+              {reading ? reading.drop.toFixed(1) : '—'}
+              <i>Pa</i>
+            </dd>
+          </div>
+          <div className="tunnel__fact">
+            <dt>peak jet</dt>
+            <dd>
+              {reading ? reading.jet.toFixed(1) : '—'}
+              <i>m/s</i>
+            </dd>
+          </div>
+        </dl>
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
