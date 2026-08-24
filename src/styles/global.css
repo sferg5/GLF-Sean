@@ -4271,11 +4271,18 @@ button {
   box-shadow: 0 0 0 5px rgba(238, 59, 51, 0.18);
 }
 
-.tunnel__layers {
+.tunnel__layers,
+.tunnel__units {
   display: flex;
   justify-content: center;
   gap: clamp(14px, 2vw, 26px);
   font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+}
+
+/* Tucked up under the headline's own margin rather than taking a full frame row — it is an aside
+   about the figures, and a full row gave it the same standing as the figures themselves. */
+.tunnel__units {
+  margin-top: calc(-1 * clamp(6px, 1.6svh, 20px));
 }
 
 .tunnel__layer {

@@ -74,6 +74,21 @@ export function Perforation() {
   const [pace, setPace] = useState(PACE.ref)
   const [layers, setLayers] = useState<Layers>({ particles: true, glyphs: true, heat: true })
 
+  /**
+   * Metric or imperial, display-only.
+   *
+   * The model runs in km/h and °C and nothing about it changes with this switch — `windFor`, the
+   * committed CURVE and the published payload all stay metric, so the checks keep asserting one
+   * set of numbers. Conversion happens at the last moment, in the copy. The °C figures are
+   * *differences* (over ambient, cooler than), so Fahrenheit is the delta × 1.8 with no +32 — a
+   * 2.5°C drop is a 4.5°F drop, not a 36.5°F one.
+   */
+  const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
+  const speed = (kmh: number) =>
+    units === 'metric' ? kmh.toFixed(1) + ' km/h' : (kmh * 0.621371).toFixed(1) + ' mph'
+  const degrees = (c: number) =>
+    units === 'metric' ? c.toFixed(1) + ' °C' : (c * 1.8).toFixed(1) + ' °F'
+
   /** Measured and committed, not read live — see the note on `CURVE` in `lib/perforation.ts`. */
   const figures = useMemo(() => predict(pace), [pace])
   /** Solved from the geometry, so a label is right on the first paint. */
@@ -147,12 +162,29 @@ export function Perforation() {
       <div className="tunnel__frame">
         <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
+        {/* Units, above the figures they re-express. Same treatment as the layer switches at the
+            foot — plain words, the chosen one underlined — because both are asides about how to
+            show the thing, not part of the thing. */}
+        <div className="tunnel__units tunnel__inset">
+          {(['metric', 'imperial'] as const).map((u) => (
+            <button
+              key={u}
+              type="button"
+              className="tunnel__layer"
+              aria-pressed={units === u}
+              onClick={() => setUnits(u)}
+            >
+              {u}
+            </button>
+          ))}
+        </div>
+
         {/* The verdict, directly under the statement — three figures, and the first is live.
             The pace leads because it is the reader's own number: the two comparisons to its right
             are what that pace costs on one knit and buys on the other. */}
         <div className="tunnel__verdict tunnel__inset" aria-hidden="true">
           <p className="tunnel__figure">
-            <b>{pace.toFixed(1)} km/h</b>
+            <b>{speed(pace)}</b>
             <span>is your speed</span>
           </p>
           <p className="tunnel__figure">
@@ -160,7 +192,7 @@ export function Perforation() {
             <span>more air through the knit</span>
           </p>
           <p className="tunnel__figure">
-            <b>{figures.drop.toFixed(1)} °C</b>
+            <b>{degrees(figures.drop)}</b>
             <span>cooler against the skin</span>
           </p>
         </div>
@@ -195,7 +227,7 @@ export function Perforation() {
           <Channel
             spec={FABRICS[0]}
             open={open[0]}
-            rise={figures.rise[0]}
+            rise={degrees(figures.rise[0])}
             flow={nowFlow}
             glyph={nowGlyph}
             hint="drag inside to disturb the flow"
@@ -203,7 +235,7 @@ export function Perforation() {
           <Channel
             spec={FABRICS[1]}
             open={open[1]}
-            rise={figures.rise[1]}
+            rise={degrees(figures.rise[1])}
             flow={nextFlow}
             glyph={nextGlyph}
           />
@@ -260,7 +292,8 @@ function Channel({
 }: {
   spec: (typeof FABRICS)[number]
   open: number
-  rise: number
+  /** Already formatted, so the channel doesn't need to know which units are on. */
+  rise: string
   flow: React.RefObject<HTMLCanvasElement | null>
   glyph: React.RefObject<HTMLCanvasElement | null>
   hint?: string
@@ -280,7 +313,7 @@ function Channel({
           {spec.tag && <em> {spec.tag}</em>}
         </p>
         <p className="tunnel__read">
-          {open.toFixed(0)}% open · {rise.toFixed(1)} °C over ambient
+          {open.toFixed(0)}% open · {rise} over ambient
         </p>
       </div>
     </article>
