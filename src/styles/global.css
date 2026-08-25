@@ -2812,7 +2812,9 @@ button {
      section the strip is centred in. */
   min-height: 100svh;
   display: grid;
-  align-content: center;
+  /* Stretch, not centre: the frame fills the section and the window's 1fr row takes every pixel
+     the other rows leave — see the note on `.tunnel__frame`. */
+  align-content: stretch;
   justify-items: center;
   /* Between the strip and the wordmark. The hovered shoe rises into the space above the
      row, so the air the section needs is all below it. */
@@ -3315,7 +3317,9 @@ button {
      reader and re-rasterise both canvases. */
   min-height: 100svh;
   display: grid;
-  align-content: center;
+  /* Stretch, not centre: the frame fills the section and the window's 1fr row takes every pixel
+     the other rows leave — see the note on `.tunnel__frame`. */
+  align-content: stretch;
   padding: clamp(28px, 6svh, 72px) 0;
   color: rgba(240, 238, 235, 0.92);
   /* Lit from above and behind the specimen, which is where an instrument's light comes from — a
@@ -4019,7 +4023,9 @@ button {
      the channel under the reader and re-rasterise three buffers. */
   min-height: 100svh;
   display: grid;
-  align-content: center;
+  /* Stretch, not centre: the frame fills the section and the window's 1fr row takes every pixel
+     the other rows leave — see the note on `.tunnel__frame`. */
+  align-content: stretch;
   /* Block padding only. The type takes the page's own inset per element; the channel takes none,
      which is what lets it bleed.
 
@@ -4038,6 +4044,13 @@ button {
 .tunnel__frame {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* Six rows: title, axis, knit switch, the window, the layer switches, the closing words. The
+     window's row is `1fr` — with the slider and the figure band gone it takes everything the
+     others leave, which more than doubles it on every screen while keeping the section exactly
+     one screen tall. A fixed doubling (36svh → 72svh) was the first attempt and it cannot fit:
+     72svh plus the type around it overruns a 768px iPad by ninety-odd pixels. `1fr` is the
+     honest version — as tall as the viewport allows, never taller. */
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   gap: clamp(8px, 1.2svh, 18px);
 }
 
@@ -4166,17 +4179,56 @@ button {
   color: var(--page-ink);
 }
 
-/* The verdict band, under the window now that there is only one.
-   Centred rather than on the prose grid: these are figures, not a sentence.
-   ------------------------------------------------------------------ */
-
-.tunnel__mid {
+/* The knit switch — a segmented pill, the thumb slid by the data attribute React stamps on
+   the container. */
+.tunnel__fabs {
+  position: relative;
   display: grid;
-  justify-items: center;
-  gap: clamp(8px, 1.4svh, 16px);
-  padding: clamp(14px, 2.2svh, 40px) clamp(20px, 4vw, 72px);
-  background: var(--page);
+  grid-template-columns: 1fr 1fr;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 3px;
+  border-radius: 100px;
+  background: rgba(20, 16, 15, 0.07);
 }
+
+.tunnel__fabs::before {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc(50% - 3px);
+  border-radius: 100px;
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(20, 16, 15, 0.16),
+    0 0 0 0.5px rgba(20, 16, 15, 0.04);
+  transition: translate 0.18s var(--ease-out-quad);
+}
+
+.tunnel__fabs[data-knit='next']::before {
+  translate: 100% 0;
+}
+
+.tunnel__fab {
+  position: relative;
+  z-index: 1;
+  padding: 7px 20px;
+  border: 0;
+  border-radius: 100px;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  font-weight: var(--weight-heading);
+  color: var(--page-dim);
+  transition: color 0.18s var(--ease-out-quad);
+}
+
+.tunnel__fab[aria-pressed='true'] {
+  color: var(--page-ink);
+}
+
+
 
 /* The closing words
    The prose block's composition in miniature: the label out on the first column with two empty
@@ -4216,16 +4268,17 @@ button {
 }
 
 .tunnel__channel {
-  display: block;
+  /* A grid so the window inherits the 1fr row's full height. */
+  display: grid;
+  min-height: 0;
 }
 
 .tunnel__window {
   position: relative;
-  /* Both old chambers' height in one window — the knit switch above it decides which fabric it
-     shows, so the picture gets the room the comparison used to split two ways. Still the biggest
-     single line in the section's svh budget, and still inside one 768px iPad screen with
-     everything around it. */
-  height: clamp(230px, 36svh, 640px);
+  /* All of the 1fr row — see `.tunnel__frame`. The floor is for pathological viewports; on any
+     real screen the row is far taller than it. */
+  height: 100%;
+  min-height: 200px;
   overflow: clip;
   background: #0a0908;
   cursor: crosshair;
@@ -4349,23 +4402,7 @@ button {
   height: 100dvh;
 }
 
-/* Which knit, and what it costs — both inside the window, in the two bottom corners.
-   The shadow rather than a scrim: a gradient band across the foot of the channel would cover the
-   microclimate, which is the part being read. A shadow costs nothing and only darkens what is
-   directly under a glyph.
-   ------------------------------------------------------------------ */
-.tunnel__knit,
-.tunnel__read {
-  position: absolute;
-  bottom: clamp(8px, 1.4svh, 14px);
-  z-index: 1;
-  margin: 0;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  line-height: 1.3;
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(6, 5, 8, 0.85);
-  pointer-events: none;
-}
+
 
 .tunnel__knit {
   left: clamp(20px, 4vw, 72px);
@@ -4378,79 +4415,12 @@ button {
   font-style: normal;
 }
 
-.tunnel__read {
-  right: clamp(20px, 4vw, 72px);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
+
 
 /* The controls
-   The pace slider, centred under the figure it drives; the layer switches, centred under the
-   pictures they turn on and off. The two-column control bar is gone with the layout that needed
-   it.
+   The layer switches under the window; the knit switch above it. The pace slider and the
+   metric/imperial pill are retired with the figures they served.
    ------------------------------------------------------------------ */
-
-.tunnel__pace {
-  display: block;
-  /* Long enough to give a 3–17 km/h range real travel, short of full width so it reads as one
-     centred control rather than as a rule across the page. */
-  width: min(560px, calc(100% - 2 * clamp(20px, 4vw, 72px)));
-  margin-inline: auto;
-  cursor: pointer;
-  user-select: none;
-}
-
-.tunnel__pace input[type='range'] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 22px;
-  background: none;
-  margin: 0;
-  cursor: ew-resize;
-}
-
-.tunnel__pace input[type='range']::-webkit-slider-runnable-track {
-  height: 1px;
-  background: var(--page-rule);
-}
-
-.tunnel__pace input[type='range']::-moz-range-track {
-  height: 1px;
-  background: var(--page-rule);
-}
-
-.tunnel__pace input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 15px;
-  height: 15px;
-  margin-top: -7px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--page-ink);
-}
-
-.tunnel__pace input[type='range']::-moz-range-thumb {
-  width: 15px;
-  height: 15px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--page-ink);
-}
-
-.tunnel__pace input[type='range']:focus {
-  outline: none;
-}
-
-.tunnel__pace input[type='range']:focus-visible::-webkit-slider-thumb,
-.tunnel__pace input[type='range']:hover::-webkit-slider-thumb {
-  box-shadow: 0 0 0 5px rgba(20, 16, 15, 0.12);
-}
-
-.tunnel__pace input[type='range']:focus-visible::-moz-range-thumb,
-.tunnel__pace input[type='range']:hover::-moz-range-thumb {
-  box-shadow: 0 0 0 5px rgba(20, 16, 15, 0.12);
-}
 
 .tunnel__layers {
   display: flex;
@@ -4459,62 +4429,9 @@ button {
   font-size: clamp(0.82rem, 0.95vw, 0.94rem);
 }
 
-/* The units, as a segmented pill.
-   The one piece of app furniture in the section, and it earns it: metric/imperial is a two-state
-   switch, not a pair of links, and the sliding thumb says "one or the other" in a way two
-   underlined words never quite did. The thumb is the container's ::before, slid by the data
-   attribute React stamps on it, so the buttons stay plain text laid over the top.
-   ------------------------------------------------------------------ */
-.tunnel__units {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: fit-content;
-  margin: 0 auto;
-  padding: 2.5px;
-  border-radius: 100px;
-  background: rgba(20, 16, 15, 0.07);
-}
 
-.tunnel__units::before {
-  content: '';
-  position: absolute;
-  inset: 2.5px auto 2.5px 2.5px;
-  width: calc(50% - 2.5px);
-  border-radius: 100px;
-  background: #fff;
-  box-shadow:
-    0 1px 3px rgba(20, 16, 15, 0.16),
-    0 0 0 0.5px rgba(20, 16, 15, 0.04);
-  transition: translate 0.18s var(--ease-out-quad);
-}
-
-.tunnel__units[data-units='imperial']::before {
-  translate: 100% 0;
-}
-
-.tunnel__unit {
-  position: relative;
-  z-index: 1;
-  padding: 4.5px 14px;
-  border: 0;
-  border-radius: 100px;
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  font-size: clamp(0.74rem, 0.85vw, 0.85rem);
-  text-transform: lowercase;
-  color: var(--page-dim);
-  transition: color 0.18s var(--ease-out-quad);
-}
-
-.tunnel__unit[aria-pressed='true'] {
-  color: var(--page-ink);
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .tunnel__units::before,
-  .tunnel__unit,
   .tunnel__fabs::before,
   .tunnel__fab,
   .tunnel__expand,
@@ -4543,39 +4460,7 @@ button {
   box-shadow: inset 0 -1px 0 0 var(--page-ink);
 }
 
-/* The verdict
-   Three figures under the statement, centred: the reader's pace, then the two things the new knit
-   does at it. The first is live — it is the slider's readout, a row above the slider — and the
-   other two are comparisons, because neither means much on its own.
-   ------------------------------------------------------------------ */
 
-.tunnel__verdict {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: clamp(20px, 5vw, 84px);
-  margin: 0;
-}
-
-.tunnel__figure {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  text-align: center;
-}
-
-.tunnel__figure > b {
-  font-size: clamp(1.5rem, 2.7vw, 2.4rem);
-  font-weight: var(--weight-heading);
-  line-height: 1;
-  letter-spacing: -0.026em;
-  font-variant-numeric: tabular-nums;
-}
-
-.tunnel__figure > span {
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  color: var(--page-dim);
-}
 
 /* Said once, in words, for anything that can't see the canvas. */
 .tunnel__sr {
@@ -4611,11 +4496,7 @@ button {
     bottom: calc(clamp(8px, 1.4svh, 14px) + 1.35em);
   }
 
-  .tunnel__read {
-    right: auto;
-    left: clamp(20px, 4vw, 72px);
-    text-align: left;
-  }
+
 }
 
 /* The still frame is a legitimate rendering of this section — it is a cross-section diagram

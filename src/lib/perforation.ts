@@ -22,10 +22,9 @@
  * The temperature is *solved*, not asserted — change the open area and the skin figure moves
  * because the flow moved.
  *
- * **The two specimens are the ones `lib/air.ts` already committed to.** 18% open and 44% open, the
- * current ShowZero knit and v2. Those numbers are in that file, they are what
- * `scripts/air.sh` asserts against, and there is no reason for two models of the same pair of
- * fabrics to disagree about how open they are.
+ * **The one committed fact about v2 is +30% airflow**, and the two geometries are solved from it —
+ * see the note over `FABRICS`. Today's knit keeps `lib/air.ts`'s 18% open area; v2 is whatever
+ * geometry delivers 1.30× the solved throughflow, which lands near 22% open.
  *
  * **Every figure is solver-derived and none of it is measured.** The perforation geometry behind
  * each porosity is plausible rather than specified, and the conversion from solver units to °C and
@@ -65,11 +64,12 @@ export type FabricSpec = {
 /**
  * Both knits, in the order the argument runs: what it is now, then what it becomes.
  *
- * **The porosities are `lib/air.ts`'s**, 0.18 and 0.44. The diameter and pitch behind each are
- * chosen to land on those two numbers and to differ the way the older model says they differ — it
- * describes the open knit as having *more* pores (8 against 3) rather than bigger ones, so the new
- * knit here is a finer pitch with a slightly larger hole rather than the same grid opened up. On
- * screen that reads as a denser row of smaller jets, which is what more perforations look like.
+ * **One fact is known about v2: it moves 30% more air.** That is the entire committed claim, and
+ * the geometry here is reverse-solved from it — v2's diameter and pitch were swept headlessly
+ * (settle 800 steps, average the throughflow over 400 more) until the solved flow through v2 came
+ * out 1.30× the flow through today's knit at running paces. The earlier version of this pair
+ * carried `lib/air.ts`'s 18%/44% porosities and a 3.2× airflow ratio, which was a claim nobody
+ * had made; these are the numbers that say only what the fabric team said.
  */
 export const FABRICS: readonly [FabricSpec, FabricSpec] = [
   {
@@ -86,9 +86,9 @@ export const FABRICS: readonly [FabricSpec, FabricSpec] = [
     name: 'ShowZero',
     tag: 'v2',
     note: 'engineered open knit',
-    dia: 0.61,
-    pitch: 1.4,
-    drag: 0.12,
+    dia: 0.44,
+    pitch: 2.1,
+    drag: 0.26,
   },
 ]
 
@@ -766,20 +766,20 @@ export const verdict = (now: Reading, next: Reading) => ({
  * runner actually spends their time.
  */
 const CURVE: readonly (readonly [number, number, number, number])[] = [
-  /* warm-now, warm-next, through-now, through-next */
-  [4.964, 3.7396, 0.08675, 0.2587],
-  [4.628, 3.166, 0.10858, 0.33474],
-  [4.3058, 2.7012, 0.13006, 0.41276],
-  [4.0112, 2.3343, 0.15511, 0.4905],
-  [3.7523, 2.0422, 0.18003, 0.56548],
-  [3.4686, 1.8254, 0.20482, 0.64077],
-  [3.1698, 1.6614, 0.23127, 0.72188],
-  [2.9131, 1.5193, 0.25934, 0.80813],
+  /* warm-now, warm-next, through-now, through-next — time-averaged over 400 steps after an
+     800-step settle, which the single-snapshot version of this table wasn't: the wake sheds, so
+     an instantaneous throughflow wobbles by ±10% and the ratio read as anything from 1.25 to 1.4
+     depending on the frame it was caught in. */
+  [4.9205, 4.8338, 0.0795, 0.09922],
+  [3.9196, 3.5783, 0.15636, 0.20303],
+  [2.9615, 2.6318, 0.24188, 0.31648],
 ]
 
-/** The pace of `CURVE[0]`, and the gap between rows. */
+/** The pace of `CURVE[0]`, and the gap between rows — three rows now (3, 10, 17 km/h), because
+ * nothing on screen quotes these figures any more; they feed the published payload and the
+ * screen-reader text, and linear interpolation across seven km/h is fine for that. */
 const CURVE_FROM = 3
-const CURVE_STEP = 2
+const CURVE_STEP = 7
 
 export type Verdict = {
   /** Microclimate above ambient for each knit, °C, in `FABRICS` order. */

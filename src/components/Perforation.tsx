@@ -71,8 +71,14 @@ export function Perforation() {
    * you run while standing in front of it, and it should always open at the reference pace the
    * copy is written against.
    */
-  const [pace, setPace] = useState(PACE.ref)
   const [layers, setLayers] = useState<Layers>({ particles: true, glyphs: true, heat: true })
+
+  /**
+   * The wind, fixed at the reference pace. The slider went with the figures it drove: the section
+   * now makes exactly one claim — 30% more air — and a variable the copy never answers is a
+   * control that only raises questions.
+   */
+  const pace = PACE.ref
 
   /**
    * Which knit is in the window. Both fields solve continuously either way — see the note on the
@@ -82,27 +88,13 @@ export function Perforation() {
   const knitRef = useRef(knit)
   knitRef.current = knit
 
-  /**
-   * Metric or imperial, display-only.
-   *
-   * The model runs in km/h and °C and nothing about it changes with this switch — `windFor`, the
-   * committed CURVE and the published payload all stay metric, so the checks keep asserting one
-   * set of numbers. Conversion happens at the last moment, in the copy. The °C figures are
-   * *differences* (over ambient, cooler than), so Fahrenheit is the delta × 1.8 with no +32 — a
-   * 2.5°C drop is a 4.5°F drop, not a 36.5°F one.
-   */
-  const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
-  const speed = (kmh: number) =>
-    units === 'metric' ? kmh.toFixed(1) + ' km/h' : (kmh * 0.621371).toFixed(1) + ' mph'
-  const degrees = (c: number) =>
-    units === 'metric' ? c.toFixed(1) + ' °C' : (c * 1.8).toFixed(1) + ' °F'
 
   /** Measured and committed, not read live — see the note on `CURVE` in `lib/perforation.ts`. */
   const figures = useMemo(() => predict(pace), [pace])
   /** Solved from the geometry, so a label is right on the first paint. */
   const open = useMemo(() => FABRICS.map((f) => porosityOf(f) * 100), [])
 
-  /* The loop reads refs, so moving the slider never restarts a running field. */
+  /* A ref because the loop's contract wants one; the value never changes any more. */
   const paceRef = useRef(pace)
   paceRef.current = pace
   const layerRef = useRef(layers)
@@ -153,7 +145,6 @@ export function Perforation() {
   })
 
   const shown = byId(knit)
-  const shownIdx = knit === 'next' ? 1 : 0
 
   /**
    * Published for the checks.
@@ -184,20 +175,6 @@ export function Perforation() {
       <div className="tunnel__frame">
         <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
-        {/* The control, directly under the statement it acts out. No inline label and no output:
-            its live readout is the first figure in the band between the chambers, which is where
-            the eye is when the wind changes. */}
-        <label className="tunnel__pace" aria-label="Set your pace">
-          <input
-            type="range"
-            min={PACE.min}
-            max={PACE.max}
-            step={PACE.step}
-            value={pace}
-            onChange={(e) => setPace(Number(e.currentTarget.value))}
-          />
-        </label>
-
         <div className="tunnel__axis" aria-hidden="true">
           {MARKS.map((mark) => (
             <span
@@ -211,8 +188,8 @@ export function Perforation() {
           ))}
         </div>
 
-        {/* The knit switch, over the window it changes — the same segmented pill as the units,
-            because it is the same kind of fact: one of two, never neither. Both fields are solving
+        {/* The knit switch, over the window it changes — a segmented pill, one of two, never
+            neither. Both fields are solving
             either way, so the switch lands instantly on a settled picture. */}
         <div className="tunnel__fabs" data-knit={knit} role="group" aria-label="Fabric">
           {FABRICS.map((f) => (
@@ -231,46 +208,11 @@ export function Perforation() {
 
         <Channel
           spec={shown}
-          open={open[shownIdx]}
-          rise={degrees(figures.rise[shownIdx])}
           flow={flow}
           glyph={glyphC}
           hint="drag inside to disturb the flow"
           onFallbackFull={setFallbackFull}
         />
-
-        {/* The verdict, under the window. The first figure is the pace the wind is blowing at;
-            the other two compare the two knits and do not change with the switch — they are the
-            distance between what the two buttons show. */}
-        <div className="tunnel__mid">
-          <div className="tunnel__verdict" aria-hidden="true">
-            <p className="tunnel__figure">
-              <b>{speed(pace)}</b>
-              <span>is your speed</span>
-            </p>
-            <p className="tunnel__figure">
-              <b>{figures.ratio.toFixed(2)}×</b>
-              <span>more air through the knit</span>
-            </p>
-            <p className="tunnel__figure">
-              <b>{degrees(figures.drop)}</b>
-              <span>cooler against the skin</span>
-            </p>
-          </div>
-          <div className="tunnel__units" data-units={units}>
-            {(['metric', 'imperial'] as const).map((u) => (
-              <button
-                key={u}
-                type="button"
-                className="tunnel__unit"
-                aria-pressed={units === u}
-                onClick={() => setUnits(u)}
-              >
-                {u}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* The layer switches, centred under the pictures they turn on and off. */}
         <span className="tunnel__layers">
@@ -293,8 +235,8 @@ export function Perforation() {
         <div className="tunnel__between">
           <p className="tunnel__between-label">about the perforations</p>
           <p className="tunnel__between-lead">
-            showzero v2 cuts its perforations on a 1.4 mm pitch instead of 2.5 — thirteen jets
-            across the channel where today's knit has seven.
+            one thing is known about showzero v2: it moves 30% more air through the knit — and
+            that is exactly what this simulation is tuned to show.
           </p>
         </div>
 
@@ -302,14 +244,11 @@ export function Perforation() {
         <p className="tunnel__sr">
 One cross-section of the ShowZero knit in a wind tunnel, outside air on the left and skin
           on the right, with the knit standing across the channel a third of the way in. A switch
-          above the picture chooses which version is shown; colour is air temperature — the body
-          warms the air held against the skin, and airflow through the knit is what carries that
-          warmth away. The current knit is {open[0].toFixed(0)} per cent open and holds a
-          microclimate {figures.rise[0].toFixed(1)} °C above ambient; v2 is {open[1].toFixed(0)} per
-          cent open, moves {figures.ratio.toFixed(1)} times the air, and holds it{' '}
-          {figures.drop.toFixed(1)} °C cooler at {pace.toFixed(1)} kilometres an hour. Both fabrics
-          and every figure here are placeholder, derived from the simulation rather than measured
-          in a wind tunnel.
+          above the picture chooses between today's knit and showzero v2, and colour is air
+          temperature — the body warms the air held against the skin, and airflow through the knit
+          carries that warmth away. One thing is known about v2: it moves 30% more air through the
+          knit, and the two simulations are tuned so their solved airflow differs by exactly that.
+          Everything else in the picture is illustrative rather than measured.
         </p>
       </div>
     </section>
@@ -326,17 +265,12 @@ One cross-section of the ShowZero knit in a wind tunnel, outside air on the left
  */
 function Channel({
   spec,
-  open,
-  rise,
   flow,
   glyph,
   hint,
   onFallbackFull,
 }: {
   spec: (typeof FABRICS)[number]
-  open: number
-  /** Already formatted, so the channel doesn't need to know which units are on. */
-  rise: string
   flow: React.RefObject<HTMLCanvasElement | null>
   glyph: React.RefObject<HTMLCanvasElement | null>
   hint?: string
@@ -412,12 +346,11 @@ function Channel({
             {hint}
           </p>
         )}
+        {/* The name alone. The old right-corner reading quoted open area and °C over ambient —
+            figures nobody has committed to. The one committed fact lives in the copy below. */}
         <p className="tunnel__knit">
           {spec.name}
           {spec.tag && <em> {spec.tag}</em>}
-        </p>
-        <p className="tunnel__read">
-          {open.toFixed(0)}% open · {rise} over ambient
         </p>
         {/* Stops its own pointerdown: the window's drag handler sits on the host, and a click on
             the expand button should not also stir the corner of the flow. */}
