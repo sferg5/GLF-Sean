@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInView, useReducedMotion } from 'motion/react'
-import { type Layers, usePerforation } from '../lab/Perforation'
-import { FABRICS, type FabricId, PACE, WALL, byId, porosityOf, predict } from '../lib/perforation'
+import { type ChannelRefs, type Layers, usePerforation } from '../lab/Perforation'
+import { FABRICS, PACE, WALL, porosityOf, predict } from '../lib/perforation'
 
 /**
  * ShowZero, twice, in the same wind.
@@ -34,8 +34,6 @@ import { FABRICS, type FabricId, PACE, WALL, byId, porosityOf, predict } from '.
  * without someone who owns the actual knit reading it first.
  */
 
-const TITLE = 'the faster you go, the cooler the feel.'
-
 /**
  * The axis, said once for both channels.
  *
@@ -65,9 +63,12 @@ export function Perforation() {
    * you run while standing in front of it, and it should always open at the reference pace the
    * copy is written against.
    */
-  /* All three render layers, always on — the wind/flow/heat switches retired with the other
-     controls, and a display piece should simply show everything it has. */
-  const layers: Layers = { particles: true, glyphs: true, heat: true }
+  /**
+   * Which layers draw. The heat raster is off for now — the temperature field is still solved every
+   * frame, so flipping `heat` back to `true` brings the layer up on live data rather than a cold
+   * start. See the note in `lab/Perforation.tsx`.
+   */
+  const layers: Layers = { particles: true, glyphs: true, heat: false }
 
   /**
    * The wind, fixed at the reference pace. The slider went with the figures it drove: the section
@@ -76,13 +77,6 @@ export function Perforation() {
    */
   const pace = PACE.ref
 
-  /**
-   * Which knit is in the window. Both fields solve continuously either way — see the note on the
-   * loop in `lab/Perforation.tsx` — so this is a display choice, and switching is instant.
-   */
-  const [knit, setKnit] = useState<FabricId>('now')
-  const knitRef = useRef(knit)
-  knitRef.current = knit
 
 
   /** Measured and committed, not read live — see the note on `CURVE` in `lib/perforation.ts`. */
@@ -96,8 +90,20 @@ export function Perforation() {
   const layerRef = useRef(layers)
   layerRef.current = layers
 
-  const flow = useRef<HTMLCanvasElement>(null)
-  const glyphC = useRef<HTMLCanvasElement>(null)
+  const nowFlow = useRef<HTMLCanvasElement>(null)
+  const nowGlyph = useRef<HTMLCanvasElement>(null)
+  const nextFlow = useRef<HTMLCanvasElement>(null)
+  const nextGlyph = useRef<HTMLCanvasElement>(null)
+
+  /* Stable across renders, or the effect that owns both fields tears down on every parent update. */
+  const channels = useMemo(
+    () =>
+      [
+        { flow: nowFlow, glyph: nowGlyph, spec: FABRICS[0] },
+        { flow: nextFlow, glyph: nextGlyph, spec: FABRICS[1] },
+      ] as const satisfies readonly ChannelRefs[],
+    [],
+  )
 
   /**
    * The one thing about this section that depends on where the page is.
@@ -130,17 +136,12 @@ export function Perforation() {
   }, [])
 
   usePerforation({
-    flow,
-    glyph: glyphC,
-    fabrics: FABRICS,
-    active: knitRef,
+    channels,
     pace: paceRef,
     layers: layerRef,
     showing: showing || nativeFull || fallbackFull,
     reduced,
   })
-
-  const shown = byId(knit)
 
   /**
    * Published for the checks.
@@ -168,45 +169,22 @@ export function Perforation() {
 
   return (
     <section className="tunnel" ref={section}>
-      <div className="tunnel__frame">
-        <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
-
-        {/* The knit switch, over the window it changes — a segmented pill, one of two, never
-            neither. Both fields are solving
-            either way, so the switch lands instantly on a settled picture. */}
-        <div className="tunnel__fabs" data-knit={knit} role="group" aria-label="Fabric">
-          {FABRICS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className="tunnel__fab"
-              aria-pressed={knit === f.id}
-              onClick={() => setKnit(f.id)}
-            >
-              {f.name}
-              {f.tag ? ` ${f.tag}` : ''}
-            </button>
-          ))}
-        </div>
-
-        <Channel
-          spec={shown}
-          flow={flow}
-          glyph={glyphC}
-          hint="drag inside to disturb the flow"
-          onFallbackFull={setFallbackFull}
-        />
-
-        {/* The words, last — the prose block's composition, closing the section the way the knit
-            prose closes its own: the reader has seen both pictures and the measurement between
-            them, and this is the sentence that says why. */}
-        <div className="tunnel__between">
-          <p className="tunnel__between-label">about the fabric</p>
-          <p className="tunnel__between-lead">
-            showzero v2 breathes 30% more air through the knit — engineered airflow that carries
-            heat off your skin as fast as you build it.
-          </p>
-        </div>
+      {/* Two chambers, half a screen each, and nothing else on the page. Every label is inside a
+          picture; there is no white for text to sit on. */}
+      <Channel
+        spec={FABRICS[0]}
+        flow={nowFlow}
+        glyph={nowGlyph}
+        marks
+        hint="drag inside to disturb the flow"
+        onFallbackFull={setFallbackFull}
+      />
+      <Channel
+        spec={FABRICS[1]}
+        flow={nextFlow}
+        glyph={nextGlyph}
+        onFallbackFull={setFallbackFull}
+      />
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
@@ -217,8 +195,7 @@ One cross-section of the ShowZero knit in a wind tunnel, outside air on the left
           carries that warmth away. One thing is known about v2: it moves 30% more air through the
           knit, and the two simulations are tuned so their solved airflow differs by exactly that.
           Everything else in the picture is illustrative rather than measured.
-        </p>
-      </div>
+      </p>
     </section>
   )
 }
@@ -235,12 +212,16 @@ function Channel({
   spec,
   flow,
   glyph,
+  marks,
   hint,
   onFallbackFull,
 }: {
   spec: (typeof FABRICS)[number]
   flow: React.RefObject<HTMLCanvasElement | null>
   glyph: React.RefObject<HTMLCanvasElement | null>
+  /** The axis, on the top chamber only — both are the same geometry, so naming it twice would be
+   * labelling the picture rather than the diagram. */
+  marks?: boolean
   hint?: string
   /** Reports CSS-overlay fullscreen up to the parent, which gates the loop on it. */
   onFallbackFull: (on: boolean) => void
@@ -311,22 +292,28 @@ function Channel({
         <canvas className="tunnel__canvas" ref={glyph} aria-hidden="true" />
         {/* The axis, inside the picture it labels — white over the field, like the knit's name.
             The right mark steps in past the expand button's corner. */}
-        {MARKS.map((mark) => (
-          <span
-            key={mark.label}
-            className="tunnel__mark"
-            data-align={mark.align}
-            style={mark.align === 'centre' ? { left: `${mark.at * 100}%` } : undefined}
-            aria-hidden="true"
-          >
-            {mark.label}
-          </span>
-        ))}
+        {marks &&
+          MARKS.map((mark) => (
+            <span
+              key={mark.label}
+              className="tunnel__mark"
+              data-align={mark.align}
+              style={mark.align === 'centre' ? { left: `${mark.at * 100}%` } : undefined}
+              aria-hidden="true"
+            >
+              {mark.label}
+            </span>
+          ))}
         {hint && (
           <p className="tunnel__hint" aria-hidden="true">
             {hint}
           </p>
         )}
+        {/* Which chamber is which. The only thing telling them apart now that both are on screen. */}
+        <p className="tunnel__knit">
+          {spec.name}
+          {spec.tag && <em> {spec.tag}</em>}
+        </p>
         {/* Stops its own pointerdown: the window's drag handler sits on the host, and a click on
             the expand button should not also stir the corner of the flow. */}
         <button

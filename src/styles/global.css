@@ -3994,129 +3994,76 @@ button {
 
 /* The perforation tunnel
    ==================================================================
-   The airflow bench test on the show-zero page.
-
-   **Light, like every other section on this page.** It was a dark instrument room carried over
-   from the two-channel test it replaced, and on a page whose other two blocks are the hero and a
-   block of prose on `--page`, a section that arrives near-black is a different document for one
-   screen. The dark is now only inside the channel, where it has a job: it is the ground the
-   velocity ramp is exposed against, and the ramp is the one thing here that is not the page's
-   palette.
-
-   So the composition is the prose section's — the same twelve columns, the same insets, the same
-   `--page-ink` on `--page` — with a full-bleed window cut through it.
+   Two chambers, half a screen each, filling the window. No headline, no controls, no page around
+   them — every label is inside a picture, so there is no white for text to sit on. What was a
+   section on a page is now the page.
    ------------------------------------------------------------------ */
 
 .tunnel {
-  /* Same polarity and the same three values as `.prose` / `.faq` / `.journey`. Declared rather
-     than inherited because those three share one rule and this is not one of them. */
   --page-ink: #14100f;
   --page-dim: rgba(20, 16, 15, 0.56);
-  --page-rule: rgba(20, 16, 15, 0.14);
 
   position: relative;
-  /* Its own stacking context: the field's glow is additive inside a canvas and must not reach a
+  /* Its own stacking context: the fields' glow is additive inside a canvas and must not reach a
      neighbour. */
   z-index: 1;
   isolation: isolate;
-  /* A screen, like the prose above it — and `svh`, so a mobile toolbar arriving doesn't resize
-     the channel under the reader and re-rasterise three buffers. */
-  min-height: 100svh;
+  /* Exactly the window, split in two. `dvh` rather than `svh` here: with nothing to scroll, the
+     dynamic viewport is the honest one — on a phone the chrome settles and the chambers grow into
+     the space instead of leaving a band of page under them. */
+  height: 100dvh;
   display: grid;
-  /* Stretch, not centre: the frame fills the section and the window's 1fr row takes every pixel
-     the other rows leave — see the note on `.tunnel__frame`. */
-  align-content: stretch;
-  /* Block padding only. The type takes the page's own inset per element; the channel takes none,
-     which is what lets it bleed.
-
-     Every vertical size in this section is budgeted in `svh` to sum inside one iPad screen —
-     landscape, 768px, the tightest display this is headed for. "One screen, no scroll" is a
-     property of these clamps, not a hope about the content: padding + seven row gaps + title +
-     slider + axis + two chambers + the verdict band + the switches + the closing words ≈ 95svh. */
-  padding: clamp(20px, 3svh, 56px) 0;
-  background: var(--page);
-  color: var(--page-ink);
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  background: var(--tunnel-ground, #0e1028);
 }
 
-/* `minmax(0, 1fr)` and not `1fr`: a grid track grows to its widest item's min-content, and one
-   row that couldn't shrink would stretch the track past the viewport and take the channel with
-   it. */
-.tunnel__frame {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  /* Four rows: title, knit switch, the window, the closing words — the axis marks live inside
-     the window. The window's row is `1fr`: it takes everything the others leave while keeping the
-     section exactly one screen tall. A fixed doubling (36svh → 72svh) was the first attempt and
-     it cannot fit: 72svh plus the type around it overruns a 768px iPad by ninety-odd pixels.
-     `1fr` is the honest version — as tall as the viewport allows, never taller. */
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: clamp(8px, 1.2svh, 18px);
-}
+/* The labels inside a chamber
+   Both in white on a text-shadow rather than a scrim: a band across the picture would cover the
+   flow, and a shadow only darkens what is directly under a glyph.
+   ------------------------------------------------------------------ */
 
-/* Everything that is type takes the prose section's horizontal inset, so the left edge of this
-   section's words lines up with the left edge of the words above it. */
-.tunnel__inset {
-  padding-inline: clamp(20px, 4vw, 72px);
-}
-
-/* The statement, on `.sz__title`'s exact type — the hero's "same sweat. different fabric." is the
-   line this one answers, and two headlines on one page that answer each other should be set the
-   same. It was on the `.faq__lead` / `.journey__lead` clamp, which tops out a full rem larger and
-   made this section shout over the hero it follows.
-
-   Weight and lower case come from the base `h1`–`h4` rule and are not repeated here, which is why
-   this block is only four properties: matching `.sz__title` means matching what it actually
-   declares, not restating what it inherits. */
-.tunnel__title {
-  /* Centred, like the hero's. `.sz__title` inherits its centring from `.sz__head`; this section
-     has no such wrapper, so the heading centres itself — `margin-inline: auto` to centre the box
-     and `text-align` to centre the lines inside it, which are two different things and a headline
-     that wraps needs both.
-
-     The measure is what makes `text-wrap: balance` mean anything here: unbounded, this sets as one
-     long line on a wide window and balance has nothing to do. At 30ch it holds one line on a
-     laptop and breaks into two even ones below that.
-
-     The display margin it briefly carried moved to the units pill as symmetric margins — with the
-     pill between this and the figures, extra space under the headline alone pushed the pill off
-     centre in its own slot. */
-  margin: 0 auto clamp(4px, 1svh, 12px);
-  max-width: 30ch;
-  font-size: clamp(1.9rem, 3.4vw, 3.2rem);
-  line-height: 1.06;
-  letter-spacing: -0.021em;
-  text-align: center;
-  text-wrap: balance;
-}
-
-/* The knit switch — two plain words, the chosen one underlined. The treatment the layer switches
-   wore before they retired: a choice reads in type here, not in app furniture. The wordmark keeps
-   its capitals — ShowZero is a name, not a sentence. */
-.tunnel__fabs {
-  display: flex;
-  justify-content: center;
-  gap: clamp(14px, 2vw, 26px);
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-}
-
-.tunnel__fab {
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  color: var(--page-dim);
-  font: inherit;
+/* Which knit this chamber is. The only thing telling the two apart now that both are on screen and
+   nothing outside them names anything. */
+.tunnel__knit {
+  position: absolute;
+  bottom: clamp(10px, 1.8svh, 18px);
+  left: clamp(20px, 4vw, 72px);
+  z-index: 1;
+  margin: 0;
+  font-size: clamp(0.88rem, 1.05vw, 1.05rem);
   font-weight: var(--weight-heading);
-  transition: color 0.14s var(--ease-out-quad);
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(6, 8, 24, 0.9);
+  pointer-events: none;
 }
 
-.tunnel__fab:hover {
-  color: var(--page-ink);
+.tunnel__knit em {
+  font-style: normal;
 }
 
-.tunnel__fab[aria-pressed='true'] {
-  color: var(--page-ink);
-  box-shadow: inset 0 -1px 0 0 var(--page-ink);
+/* The one instruction, on the top chamber only — repeated under both it would be furniture. It
+   goes as soon as it has been obeyed. */
+.tunnel__hint {
+  position: absolute;
+  inset: auto clamp(20px, 4vw, 72px) clamp(10px, 1.8svh, 18px) auto;
+  z-index: 1;
+  margin: 0;
+  font-size: clamp(0.78rem, 0.9vw, 0.9rem);
+  color: rgba(255, 255, 255, 0.4);
+  text-shadow: 0 1px 4px rgba(6, 8, 24, 0.9);
+  pointer-events: none;
+  transition: opacity 0.45s var(--ease-out-quad);
+}
+
+.tunnel__window[data-stirred='true'] .tunnel__hint {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tunnel__hint {
+    display: none;
+  }
 }
 
 /* The axis, inside the window
@@ -4149,73 +4096,34 @@ button {
   right: calc(clamp(20px, 4vw, 72px) + 46px);
 }
 
-/* The channel
-   One window now, dark and full bleed, with the knit switch above it deciding what it shows. No
-   radius: a rounded corner on a full-bleed element is a card pretending to be a window, and the
-   point of the bleed is that the diagram has no frame.
+/* The chambers
+   Each takes its grid row whole. No radius and no gap: a rounded corner on a full-bleed element is
+   a card pretending to be a window, and a gap between the two would put page back between them.
    ------------------------------------------------------------------ */
-
-
-
-/* The closing words
-   The prose block's composition in miniature: the label out on the first column with two empty
-   ones after it, the statement running from the fifth to the twelfth. That gap is what makes it
-   read as the page speaking rather than as a caption pinned between two pictures.
-   ------------------------------------------------------------------ */
-
-.tunnel__between {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 0 clamp(12px, 1.6vw, 28px);
-  padding: clamp(14px, 2.4svh, 52px) clamp(20px, 4vw, 72px);
-  background: var(--page);
-}
-
-/* Same clamp as `.prose__label`. */
-.tunnel__between-label {
-  grid-column: 1 / span 3;
-  align-self: start;
-  margin: 0;
-  padding-top: clamp(3px, 0.5vw, 9px);
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  line-height: 1.4;
-  color: var(--page-dim);
-}
-
-/* Same type as `.prose__lead`, one size down: this is an aside inside an instrument, not a
-   section of the page, and at the full 2.2rem it shouted over the headline above it. */
-.tunnel__between-lead {
-  grid-column: 5 / span 8;
-  margin: 0;
-  max-width: 44ch;
-  font-size: clamp(1.1rem, 1.75vw, 1.75rem);
-  line-height: 1.28;
-  letter-spacing: -0.014em;
-  text-wrap: pretty;
-}
 
 .tunnel__channel {
-  /* A grid so the window inherits the 1fr row's full height. */
+  position: relative;
   display: grid;
   min-height: 0;
 }
 
 .tunnel__window {
   position: relative;
-  /* All of the 1fr row — see `.tunnel__frame`. The floor is for pathological viewports; on any
-     real screen the row is far taller than it. */
   height: 100%;
-  min-height: 200px;
+  min-height: 0;
   overflow: clip;
-  /* The ground is the palette's, published as a custom property by `lab/Perforation.tsx` when it
-     builds — the canvas and this box must agree, and one of them owns the value. The fallback is
-     the shipped `ember` scheme's, for the frames before the first build. */
-  background: var(--tunnel-ground, #2d2c30);
+  background: var(--tunnel-ground, #0e1028);
   cursor: crosshair;
-  /* The window is a control — a drag in it pushes the flow — so a drag must not select the type
-     either side of it or scroll the page out from under the gesture. */
+  /* The window is a control — a drag in it pushes the flow — so a drag must not select the labels
+     or scroll the page out from under the gesture. */
   touch-action: none;
   user-select: none;
+}
+
+/* The seam. A hairline rather than a gap: the two chambers are one instrument, and page between
+   them would be exactly the white space this layout exists to remove. */
+.tunnel__channel + .tunnel__channel .tunnel__window {
+  border-top: 1px solid rgba(226, 221, 210, 0.16);
 }
 
 .tunnel__canvas {
@@ -4226,38 +4134,16 @@ button {
   height: 100%;
 }
 
-/* Edge falloff, over the canvases rather than in them. The approach flow is genuinely uniform —
-   that is what an approach flow is — so at full bleed the upstream third runs as a flat wall of one
-   value straight into the window. A gradient laid over it gives the channel a lit centre and dark
-   ends, which is where an instrument's light comes from, and costs nothing per frame. */
+/* Edge falloff, over the canvases rather than in them — the approach flow is genuinely uniform, so
+   at full bleed it runs as a flat wall of one value straight into the window frame. */
 .tunnel__window::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    /* Black rather than the ground's own colour: it darkens the edges of any palette, so the
-       falloff survives a scheme change without being restated in a third place. */
     linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 15%),
     linear-gradient(270deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0) 12%);
-}
-
-/* The one piece of type inside a picture, on the top channel only — an instruction repeated under
-   both would be furniture. It goes as soon as it has been obeyed. */
-.tunnel__hint {
-  position: absolute;
-  /* Bottom right — free since the corner reading retired, and the axis owns the top now. */
-  inset: auto clamp(20px, 4vw, 72px) clamp(8px, 1.4svh, 14px) auto;
-  z-index: 1;
-  margin: 0;
-  font-size: clamp(0.78rem, 0.9vw, 0.88rem);
-  color: rgba(240, 238, 235, 0.34);
-  pointer-events: none;
-  transition: opacity 0.45s var(--ease-out-quad);
-}
-
-.tunnel__window[data-stirred='true'] .tunnel__hint {
-  opacity: 0;
 }
 
 /* The expand control, top right — the corner the hint and the labels leave free.
@@ -4360,15 +4246,6 @@ button {
   .tunnel__controls {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
-  }
-
-  .tunnel__between-label,
-  .tunnel__between-lead {
-    grid-column: 1 / -1;
-  }
-
-  .tunnel__between-label {
-    margin-bottom: 8px;
   }
 
 }

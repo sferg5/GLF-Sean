@@ -113,11 +113,14 @@ export const windFor = (pace: number) => (0.34 + 0.66 * (pace / PACE.ref)) * 1.1
 /**
  * Where the membrane stands, as a fraction of the channel's width.
  *
- * Same value as `WALL` in `lib/air.ts` and deliberately so: the axis marks over both bench tests
- * mean the same thing, and a reader who has seen one should not have to re-learn where the fabric
- * is. Outside air arrives at the left edge, skin is at the right.
+ * **Centred.** It sat at 0.365 to match `WALL` in `lib/air.ts`, so the axis marks over both bench
+ * tests would mean the same thing — but that section is retired and this one is now a full-bleed
+ * pair of chambers, where an off-centre membrane reads as a mistake rather than as a choice. Equal
+ * halves also give the wake as much room as the approach, which is the half worth watching.
+ *
+ * Outside air still arrives at the left edge; skin is still at the right.
  */
-export const WALL = 0.365
+export const WALL = 0.5
 
 /** Physical scale of one solver cell, mm. Sets how many perforations fit the channel's height. */
 const MM_PER_CELL = 0.3
