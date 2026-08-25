@@ -226,212 +226,305 @@ const INK = Array.from({ length: BINS }, (_, i) => {
  */
 const YARN = '203,216,210'
 const YARN_HI = '243,247,244'
-const YARN_LO = '124,150,143'
+const YARN_MID = '158,180,173'
+const YARN_LO = '92,116,111'
 
 /**
- * The eyelets, read straight off the field the air meets.
+ * The perforations, recovered exactly from the field the air meets.
  *
- * One entry per unbroken run of permeable cells down the membrane column — which is to say, the
- * holes, in cell rows. Everything the knit is drawn from comes from here, so the eye you can see
- * through is the eye the solver lets air through. Nothing about the picture is decorative geometry.
+ * `buildMembrane` cuts a *slot* — one hole of `dia` repeating on `pitch` — and supersamples each
+ * cell row into a coverage fraction, so a row on a hole's edge carries a value between 0 and 1.
+ * Reading that back with a threshold would round every hole to whole cells, which is the caricature
+ * the supersample exists to avoid. Read as mass instead: a run of non-zero rows has a total open
+ * height of `Σcoverage` and a centre at its coverage-weighted centroid, and for a slot that is not
+ * an approximation — it is the hole, to sub-cell precision.
+ *
+ * This is what lets the drawing sit exactly on the solve. The slots returned here are where air is
+ * getting through, so the material drawn between them covers every cell the flow is being deformed
+ * by and nothing it isn't.
  */
-function eyeletsOf(field: Field): [number, number][] {
+function slotsOf(field: Field, sy: number): [number, number][] {
   const out: [number, number][] = []
-  let from = -1
-  for (let j = 0; j < field.h; j++) {
-    const open = field.perm[field.band + j * field.w] >= 0.5
-    if (open && from < 0) from = j
-    else if (!open && from >= 0) {
-      out.push([from, j])
-      from = -1
+  let j = 0
+  while (j < field.h) {
+    const c0 = field.perm[field.band + j * field.w]
+    if (c0 <= 0) {
+      j++
+      continue
     }
+    let mass = 0
+    let moment = 0
+    let k = j
+    while (k < field.h) {
+      const c = field.perm[field.band + k * field.w]
+      if (c <= 0) break
+      mass += c
+      moment += (k + 0.5) * c
+      k++
+    }
+    const height = mass * sy
+    const centre = (moment / mass) * sy
+    out.push([centre - height / 2, centre + height / 2])
+    j = k
   }
-  if (from >= 0) out.push([from, field.h])
   return out
 }
 
 /**
- * The knit, woven once into its own bitmap.
+ * The knit, sliced.
  *
- * **This is the fifth attempt and the first that is not a cross-section.** Four before it drew the
- * membrane as an edge — a brick wall, a column of pills, a punched sheet, a thread — and the last of
- * those was right about the width and still wrong about the subject. A slice through a knit is a
- * smear. What the fabric actually looks like is its *face*: staggered lens-shaped eyelets between
- * columns of looped yarn, which is what a macro shot of the mesh shows and what nobody recognises
- * from an edge-on section. So the membrane is now a ribbon of the face standing in the channel — a
- * window into the cloth rather than a slice of it.
+ * **Five attempts came before this one and the fifth was wrong in a new way, which is the useful
+ * one.** Four drew the membrane as an edge and failed on craft — a brick wall, a column of pills, a
+ * punched sheet, a thread. The fifth gave up on the edge and drew the *face* of the mesh instead,
+ * which looked like the fabric and was the wrong picture: a face is an oblique view, and this
+ * channel is a section. Everything else on screen is a section — the flow, the jets, the wake — so a
+ * ribbon of mesh face in the middle of it is one object in a different projection, and the jets
+ * appeared to come out of the middle of the cloth rather than through it.
  *
- * **The one thing the first pass at this got wrong is worth naming, because it is a trap.** It drew
- * the eyelets at the height of the solver's open runs, which for a 30%-open knit is a third of the
- * course pitch — and a hole a third as tall as its pitch, at a wale's width, comes out round. The
- * result was a chain, not a mesh. The mistake was reading `porosityOf` as a picture: it measures the
- * open fraction along *one column line*, and in real cloth a hole column is open for most of its
- * length while the wale beside it is closed for all of its length. The 30% is two-dimensional.
+ * So: a cut. The fabric sliced through the perforations and pressed against glass, which is exactly
+ * what the section wants — the holes opened along their length, the material between them showing
+ * the stratified interior of a cut, and the air visibly threading the slots you can see the walls
+ * of.
  *
- * So the porosity is spent the way the cloth spends it. The eyelets keep the solver's *rhythm* —
- * one per course, on the pitch measured off `field.perm`, so the eye you can see through is the
- * course the solver lets air through — and each is 80% of its pitch tall, which is what a warp-knit
- * eyelet is. What the porosity then buys is **width**: `open × gauge × pitch = eye area`, so the
- * 30% knit gets narrow slots between thick wales and the 60% one gets eyes twice as wide between
- * wales half as thick. Two knits at the same gauge, one visibly more open — which is the comparison
- * this whole screen exists to make, and it is now carried by the geometry rather than by a caption.
+ * **The alignment is the requirement, not a detail.** The strip is `field.thickness` cells wide and
+ * sits on `field.band`, because that is the region the solver actually blocks: any narrower and the
+ * flow visibly deforms in bare space beside the cloth, any wider and it masks air that is really
+ * moving. The slots come from `slotsOf`, so a hole in the picture is a hole in the solve. The
+ * material is opaque, so a tracer caught inside the band is hidden by the thing that caught it.
  *
- * **Where the lens comes from.** Each side of a wale is one continuous path that bows out to the
- * eyelet's mid-height and pinches back in between them. Two quadratics per eye, and the point at the
- * top and bottom of the eye falls out of the pinch rather than being drawn: the yarn converging is
- * what makes the point, in cloth and here.
- *
- * **An expanse, not a column.** Five wales, every other one half a course out of phase — the stagger
- * of the real mesh — with the outer ones dimmer and the ribbon's vertical edges eased off. A
- * hard-edged strip reads as an object standing in the flow; a ribbon that fades at the margins reads
- * as cloth passing through the frame, which is what it is. The count is fixed and the *gauge* flexes
- * with the window, not the other way round: three wales is a chain at any width, so it is the count
- * that has to survive a narrow channel.
+ * **What makes it read as a cut rather than a wall.** Three things, and none of them is texture for
+ * its own sake. The slabs are hourglassed — each slot is flared at the two faces and pinched at
+ * mid-thickness, which is the profile of a hole sliced lengthways and also, not coincidentally, the
+ * throat that makes the jet. The interior is darker than the faces, because a cut face is lit and
+ * the inside of a cut is not. And the material is stratified in courses with cut yarn ends catching
+ * the light along them — a knit sliced is a stack of severed loops, and stratification is the one
+ * cue that separates "cut through" from "cut out".
  *
  * Built once per size. The geometry cannot change between resizes, and a texture that reshuffles
  * every frame reads as noise rather than as thread.
  */
-function weaveKnit(field: Field, sy: number, chPx: number, cwPx: number, dpr: number) {
-  const eyes = eyeletsOf(field)
+function sliceKnit(field: Field, sx: number, sy: number, chPx: number, dpr: number) {
+  const T = Math.max(6, field.thickness * sx)
+  /* A hair of bleed each side, so the material's own soft edge falls outside the blocked band
+     rather than leaving a bright seam one pixel inside it. */
+  const bleed = Math.max(1.5, sx * 0.4)
+  const W = T + bleed * 2
+  const x0 = bleed
+  const x1 = bleed + T
 
-  /* Course pitch and open fraction, both measured off the field rather than recomputed from the
-     spec — the solved membrane is already the authority on both, and `MM_PER_CELL` is private to
-     the solver. */
-  const pitch =
-    eyes.length > 1
-      ? ((eyes[eyes.length - 1][0] - eyes[0][0]) / (eyes.length - 1)) * sy
-      : chPx / 6
-  const open = Math.max(
-    0.05,
-    Math.min(0.95, eyes.reduce((sum, [a, b]) => sum + (b - a), 0) / field.h),
-  )
-
-  /* How many wales of cloth to show. Fixed rather than derived, because it is the count and not the
-     width that decides whether this reads as mesh: at three it is a chain no matter how wide the
-     strip is, and five is the first count where the stagger is legible as a stagger. */
-  const wales = cwPx > 1700 ? 7 : 5
-
-  /* The wale gauge. Held to a fraction of the course pitch so a cell of the mesh comes out about as
-     elongated as it is in the cloth — roughly three to one — and *also* to a fraction of the channel,
-     which is what keeps the ribbon a ribbon: on an iPad in portrait the pitch is tall and the window
-     is narrow, and a gauge set by the pitch alone put a tenth of the picture under cloth. */
-  const gauge = Math.max(8, Math.min(18, pitch * 0.42, cwPx * 0.016))
-  const eyeH = pitch * 0.8
-  /* Open area = eye width × eye height over gauge × pitch. Solve it for the width. */
-  const wide = Math.max(1.4, Math.min(gauge * 0.44, (open * gauge * pitch) / eyeH / 2))
-  const pinch = Math.max(0.6, wide * 0.13)
-  const weight = Math.max(1.3, Math.min(3.4, (gauge - wide * 2) * 0.5))
-
-  const reach = (wales * gauge) / 2 + weight * 2
+  const slots = slotsOf(field, sy)
+  /* The material: everything the slots are not. */
+  const slabs: [number, number][] = []
+  let at = 0
+  for (const [a, b] of slots) {
+    if (a - at > 0.2) slabs.push([at, a])
+    at = b
+  }
+  if (chPx - at > 0.2) slabs.push([at, chPx])
 
   const canvas = document.createElement('canvas')
-  canvas.width = Math.max(2, Math.round(reach * 2 * dpr))
+  canvas.width = Math.max(2, Math.round(W * dpr))
   canvas.height = Math.max(2, Math.round(chPx * dpr))
   const kx = canvas.getContext('2d')
-  if (!kx) return { canvas, reach }
+  if (!kx) return { canvas, x: 0, w: W }
   kx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+  /**
+   * The sheet is thinner than the band, and the difference is the nap.
+   *
+   * **Two requirements pull opposite ways here and this is the join between them.** The strip has to
+   * cover `field.thickness` — four cells — because that is the region the solver blocks, and cloth
+   * drawn any narrower leaves the flow visibly bending in bare space beside it. But four cells is
+   * 1.2mm at this grid, and 1.2mm of solid material against a 2mm hole pitch is not fabric, it is
+   * stock: the slabs come out wider than they are tall and read as a row of bricks. That is the same
+   * mistake as the third attempt, which drew at the solver's thickness and looked, exactly as it was
+   * described at the time, like a hole punch taken to a sheet of paper. Four cells is a numerical
+   * device — a pressure difference needs somewhere to fall across — not a measurement of cloth.
+   *
+   * So the *sheet* is the middle 40% of the band and the rest is nap: the fibre fuzz standing off
+   * both faces of a real knit, which is genuinely there, genuinely soft-edged, and happens to sit
+   * exactly where the flow is being deformed. The cut reads as a thin sheet with slots taller than it
+   * is thick, and nothing in the blocked band is left bare.
+   */
+  const skin = T * 0.3
+  const s0 = x0 + skin
+  const s1 = x1 - skin
+  const D = s1 - s0
+
+  /* Across the cut: both faces lit, the interior not. The outside face takes the stronger rim — the
+     light in this chamber comes from the side the air arrives on, which is the left. */
+  const body = kx.createLinearGradient(s0, 0, s1, 0)
+  body.addColorStop(0, `rgba(${YARN},0.94)`)
+  body.addColorStop(0.16, `rgba(${YARN_MID},1)`)
+  body.addColorStop(0.5, `rgba(${YARN_LO},1)`)
+  body.addColorStop(0.86, `rgba(${YARN_MID},1)`)
+  body.addColorStop(1, `rgba(${YARN},0.9)`)
+
+  /* The bevel on a slot's mouth. A fabric perforation has no machined edge — the yarn rolls into the
+     hole — so the mouth is a soft turn rather than a corner. */
+  const bevel = Math.min(1.8, D * 0.3)
+
+  /* Courses, and the severed loops along them. Deterministic: a slice does not shimmer. */
+  const course = Math.max(2, sy * 0.55)
+
+  /**
+   * The fibre that crosses the holes.
+   *
+   * **This is what stops the slabs reading as bricks.** A slice through a perforated knit really does
+   * leave short bridges of material between the holes, and at this gauge those bridges are about
+   * twice as tall as the sheet is thick — so they are chunky, and no amount of shading makes a chunky
+   * isolated rectangle look like cloth. What makes it cloth is that the yarn does not stop at the
+   * hole: a cut leaves loose fibre spanning it, which is visible in any macro shot of a mesh and is
+   * the one mark that ties the bridges into a single sheet. Drawn under the slabs, so each strand
+   * disappears into the material at both ends rather than being pinned on top of it.
+   */
   kx.lineCap = 'round'
-  kx.lineJoin = 'round'
+  for (let si = 0; si < slots.length; si++) {
+    const [a, b] = slots[si]
+    const strands = 1 + (si % 2)
+    for (let m = 0; m < strands; m++) {
+      const u = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(si * 2.1 + m * 3.3))
+      const x = s0 + u * D
+      const sag = (b - a) * 0.12 * Math.sin(si * 1.4 + m)
+      kx.strokeStyle = `rgba(${YARN},${(0.16 + 0.12 * Math.abs(Math.sin(si * 1.9 + m))).toFixed(3)})`
+      kx.lineWidth = Math.max(0.5, D * 0.09)
+      kx.beginPath()
+      kx.moveTo(x, a - course * 0.4)
+      kx.quadraticCurveTo(x + sag, (a + b) / 2, x, b + course * 0.4)
+      kx.stroke()
+    }
+  }
 
-  /** One side of one wale, as a single path: pinch, bow to the eye's waist, pinch, all the way down. */
-  const side = (spans: [number, number][], xc: number, sign: number) => {
+  for (const [a, b] of slabs) {
+    const r = Math.min(bevel, (b - a) * 0.34)
+    /**
+     * The slab, with straight faces.
+     *
+     * **This is the correction to the first cut.** That one hourglassed the silhouette — pinched
+     * each slab at the faces to flare the mouth — and every slab came out a floating pill. The faces
+     * are what make a slice a slice: they are one plane, held against glass, and a silhouette that
+     * pulls away from that plane at every hole dissolves the plane into objects. So the sides run
+     * dead straight and the mouth is bevelled with light instead of with geometry.
+     */
     const path = new Path2D()
-    path.moveTo(xc + sign * pinch, -weight)
-    for (const [y0, y1] of spans) {
-      const ym = (y0 + y1) / 2
-      path.lineTo(xc + sign * pinch, y0)
-      path.quadraticCurveTo(xc + sign * wide, y0 + (ym - y0) * 0.06, xc + sign * wide, ym)
-      path.quadraticCurveTo(xc + sign * wide, y1 - (y1 - ym) * 0.06, xc + sign * pinch, y1)
-    }
-    path.lineTo(xc + sign * pinch, chPx + weight)
-    return path
-  }
+    /* The top and bottom edges carry a small deterministic waver — a cut edge of knit is eaten by
+       yarn, and a dead-straight one is the last thing making these read as machined parts. The two
+       faces stay straight, because the faces are the plane. */
+    const bite = Math.min(course * 0.5, (b - a) * 0.16)
+    const wa = bite * Math.sin(a * 0.9)
+    const wb = bite * Math.sin(b * 1.3)
+    path.moveTo(s0, a + r)
+    path.quadraticCurveTo(s0, a + wa, s0 + r, a + wa)
+    path.quadraticCurveTo(s0 + D / 2, a - wa * 0.8, s1 - r, a + wa)
+    path.quadraticCurveTo(s1, a + wa, s1, a + r)
+    path.lineTo(s1, b - r)
+    path.quadraticCurveTo(s1, b - wb, s1 - r, b - wb)
+    path.quadraticCurveTo(s0 + D / 2, b + wb * 0.8, s0 + r, b - wb)
+    path.quadraticCurveTo(s0, b - wb, s0, b - r)
+    path.closePath()
 
-  /** The loop crossings in the pinch between two eyes — the ladder that makes it yarn, not wire. */
-  const rungs = (spans: [number, number][], xc: number) => {
-    const path = new Path2D()
-    const step = Math.max(2.4, weight * 1.5)
-    const arm = pinch + weight * 0.4
-    for (let i = 0; i <= spans.length; i++) {
-      const from = i === 0 ? 0 : spans[i - 1][1]
-      const to = i === spans.length ? chPx : spans[i][0]
-      for (let y = from + step * 0.4; y < to - step * 0.2; y += step) {
-        path.moveTo(xc - arm, y)
-        path.lineTo(xc + arm, y)
-      }
-    }
-    return path
-  }
-
-  /* Centre out, so the sharpest wale is the last one drawn. */
-  const order: number[] = []
-  for (let k = (wales - 1) / 2; k >= 0; k--) {
-    if (k > 0) order.push(-k, k)
-    else order.push(0)
-  }
-
-  for (const k of order) {
-    const xc = reach + k * gauge
-    /* Every other wale half a course out of phase — the stagger of the real mesh. */
-    const shift = (Math.abs(k) % 2) * 0.5 * pitch
-    const fade = 1 - Math.min(0.74, (Math.abs(k) / ((wales - 1) / 2 || 1)) * 0.74)
-    const spans = eyes.map(([a, b]) => {
-      const mid = ((a + b) / 2) * sy + shift
-      return [mid - eyeH / 2, mid + eyeH / 2] as [number, number]
-    })
-    const left = side(spans, xc, -1)
-    const right = side(spans, xc, 1)
-    const ladder = rungs(spans, xc)
-
-    const pass = (
-      colour: string,
-      alpha: number,
-      lw: number,
-      offset: number,
-      dash?: [number, number],
-    ) => {
-      kx.save()
-      kx.translate(offset, 0)
-      kx.strokeStyle = `rgba(${colour},${(alpha * fade).toFixed(3)})`
-      kx.lineWidth = lw
-      if (dash) kx.setLineDash(dash)
-      kx.stroke(left)
-      kx.stroke(right)
-      kx.restore()
+    /**
+     * The nap, as a halo off the sheet's own silhouette.
+     *
+     * **The version before this drew it as a gradient-filled rectangle across the band with a comb of
+     * whiskers standing off each face, and it read as exactly that: a grey box with a comb on it.**
+     * Fibre has no rectangle in it anywhere. Concentric strokes of the slab's own path instead —
+     * widening, fading — which puts the fuzz on every edge at once, including the top and bottom,
+     * so a little fibre hangs into each hole the way it does in cut cloth. Four passes rather than a
+     * canvas blur: `ctx.filter` is not on every iPad this will run on, and a filter that silently
+     * does nothing would leave a hard slab twice the width it should be.
+     *
+     * It also has a job. The solver blocks four cells and the sheet is drawn across less than half of
+     * them, so without something in the margin the tracers would visibly stop short in bare space —
+     * the artefact this whole strip exists to cover. The halo is what they stop in, and stopping in
+     * fibre is what stopping at cloth looks like.
+     */
+    for (const [reach, alpha] of [
+      [skin * 2.1, 0.1],
+      [skin * 1.5, 0.14],
+      [skin * 1.0, 0.2],
+      [skin * 0.5, 0.26],
+    ] as const) {
+      kx.strokeStyle = `rgba(${YARN_MID},${alpha})`
+      kx.lineWidth = reach
+      kx.stroke(path)
     }
 
-    /* Fibre has no hard edge: a wide, faint breath under everything, or the yarn reads as wire. */
-    pass(YARN, 0.028, weight * 2.8, 0)
-    /* The shadow the loops throw, downstream of the light. */
-    pass(YARN_LO, 0.3, weight * 1.4, weight * 0.34)
-    /* The yarn itself — held well under opaque, because cloth this fine is translucent at the edges
-       and because a solid white ribbon in front of the flow reads as a bar rather than a knit. */
-    pass(YARN, 0.44, weight, 0)
-    /* The twist, as a dash along the same path — the cheapest honest plait there is. */
-    pass(YARN_HI, 0.15, weight * 0.7, 0, [1.4, 2.4])
-    /* The lit face, upstream: the light in this chamber comes from the side the air arrives on. */
-    pass(YARN_HI, 0.3, Math.max(0.65, weight * 0.32), -weight * 0.3)
+    kx.save()
+    kx.clip(path)
 
-    kx.strokeStyle = `rgba(${YARN},${(0.2 * fade).toFixed(3)})`
-    kx.lineWidth = Math.max(0.7, weight * 0.46)
-    kx.stroke(ladder)
-    kx.strokeStyle = `rgba(${YARN_HI},${(0.11 * fade).toFixed(3)})`
-    kx.lineWidth = Math.max(0.5, weight * 0.22)
-    kx.stroke(ladder)
+    kx.fillStyle = body
+    kx.fillRect(s0 - 1, a - 1, D + 2, b - a + 2)
+
+    /* Stratification. Thin dark rules across the cut — the boundary between one course of loops and
+       the next, which is what makes a cut read as layered rather than as solid stock. */
+    kx.lineWidth = Math.max(0.45, course * 0.14)
+    kx.strokeStyle = 'rgba(40,54,51,0.38)'
+    kx.beginPath()
+    for (let y = a + course; y < b - course * 0.4; y += course) {
+      kx.moveTo(s0, y)
+      kx.lineTo(s1, y)
+    }
+    kx.stroke()
+
+    /* The cut yarn ends, catching the light. A severed loop is a bright ellipse on the cut face, and
+       a grid of identical ones is the thing that would make this look machined. */
+    let i = Math.round(a / course)
+    for (let y = a + course * 0.5; y < b; y += course) {
+      i++
+      const u = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(i * 1.7))
+      const lit = 0.14 + 0.18 * Math.abs(Math.sin(i * 0.9))
+      kx.fillStyle = `rgba(${YARN_HI},${lit.toFixed(3)})`
+      kx.beginPath()
+      kx.ellipse(s0 + u * D, y, Math.max(0.5, D * 0.14), Math.max(0.4, course * 0.18), 0, 0, 6.284)
+      kx.fill()
+    }
+
+    /* The mouths, in light rather than in silhouette: the yarn rolling into the hole turns away from
+       the viewer, so the last sliver of material before a slot goes dark. */
+    const mouth = (edge: number, dir: number) => {
+      const depth = Math.min(bevel * 2.2, (b - a) * 0.4)
+      const shade = kx.createLinearGradient(0, edge, 0, edge + dir * depth)
+      shade.addColorStop(0, 'rgba(24,34,32,0.55)')
+      shade.addColorStop(1, 'rgba(24,34,32,0)')
+      kx.fillStyle = shade
+      kx.fillRect(s0 - 1, Math.min(edge, edge + dir * depth), D + 2, depth)
+    }
+    mouth(a, 1)
+    mouth(b, -1)
+    kx.restore()
+
+    /* The two cut faces, where the material meets the glass. Straight, and drawn per slab but
+       collinear across all of them — that alignment is the plane, and the plane is what says this is
+       a section through something rather than a row of parts. */
+    kx.lineWidth = Math.max(0.6, D * 0.09)
+    kx.strokeStyle = `rgba(${YARN_HI},0.26)`
+    kx.beginPath()
+    kx.moveTo(s0 + 0.3, a + r * 0.5)
+    kx.lineTo(s0 + 0.3, b - r * 0.5)
+    kx.stroke()
+    kx.strokeStyle = `rgba(${YARN_HI},0.12)`
+    kx.beginPath()
+    kx.moveTo(s1 - 0.3, a + r * 0.5)
+    kx.lineTo(s1 - 0.3, b - r * 0.5)
+    kx.stroke()
   }
 
-  /* Ease the ribbon's vertical margins. A hard edge makes it an object standing in the flow; a
-     falloff makes it cloth continuing past the frame, and it is the frame that is the fiction. */
-  const edge = kx.createLinearGradient(0, 0, reach * 2, 0)
-  edge.addColorStop(0, 'rgba(0,0,0,0.2)')
-  edge.addColorStop(0.28, 'rgba(0,0,0,1)')
-  edge.addColorStop(0.72, 'rgba(0,0,0,1)')
-  edge.addColorStop(1, 'rgba(0,0,0,0.2)')
-  kx.globalCompositeOperation = 'destination-in'
-  kx.fillStyle = edge
-  kx.fillRect(0, 0, reach * 2, chPx)
+  /* The glass. Two hairlines at the plane of each face, running the full height — across the slots
+     too, which is the whole point: the specimen is pressed against something, and the something is
+     what makes this a section rather than a floating piece of cloth. Faint enough that the air
+     coming through a slot is not veiled by it.
+     ------------------------------------------------------------------ */
+  kx.strokeStyle = 'rgba(255,255,255,0.1)'
+  kx.lineWidth = 1
+  kx.beginPath()
+  kx.moveTo(x0 + skin * 0.5, 0)
+  kx.lineTo(x0 + skin * 0.5, chPx)
+  kx.moveTo(x1 - skin * 0.5, 0)
+  kx.lineTo(x1 - skin * 0.5, chPx)
+  kx.stroke()
 
-  return { canvas, reach }
+  return { canvas, x: field.band * sx - bleed, w: W }
 }
 
 /**
@@ -555,10 +648,12 @@ type Runtime = {
   heat: HTMLCanvasElement
   hx: CanvasRenderingContext2D
   raster: ImageData
-  /** The knit, woven once at this size by `weaveKnit`, and blitted every frame. */
+  /** The knit, sliced once at this size by `sliceKnit`, and blitted every frame. */
   knit: HTMLCanvasElement
-  /** Half the woven strip's width, in CSS px: where to put its left edge relative to the membrane. */
-  knitReach: number
+  /** Where the slice's left edge goes, in CSS px — it sits on `field.band`, not centred on it. */
+  knitX: number
+  /** The slice's width in CSS px, so the blit is 1:1 and the alignment survives the resample. */
+  knitW: number
   cw: number
   ch: number
   density: number
@@ -661,9 +756,9 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
         fx.fillStyle = PALETTE.ground
         fx.fillRect(0, 0, fc.width, fc.height)
 
-        /* Woven here rather than in the loop: the geometry only changes when the box does, and this
-           is the one place that knows both the field and the size. */
-        const woven = weaveKnit(field, cheight / field.h, cheight, cw, dpr)
+        /* Sliced here rather than in the loop: the geometry only changes when the box does, and
+           this is the one place that knows both the field and the size. */
+        const cut = sliceKnit(field, cw / field.w, cheight / field.h, cheight, dpr)
 
         runtimes.push({
           spec: ch.spec,
@@ -679,8 +774,9 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
           heat,
           hx,
           raster: hx.createImageData(field.w, field.h),
-          knit: woven.canvas,
-          knitReach: woven.reach,
+          knit: cut.canvas,
+          knitX: cut.x,
+          knitW: cut.w,
           cw,
           ch: cheight,
           /**
@@ -730,28 +826,21 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
     }
 
     /**
-     * The knit, blitted.
+     * The slice, blitted.
      *
-     * All the drawing is in `weaveKnit`, which runs once per size. What's left here is where the
-     * strip goes: centred on the solved band, which is the middle of the channel — the same centre
-     * the flow's pressure jump sits on, so the eyes you can see through are exactly where the air
-     * is going through.
+     * All the drawing is in `sliceKnit`, which runs once per size. What's left is the placement, and
+     * the placement is the whole contract: the strip goes on `field.band` at `field.thickness` wide,
+     * which is exactly the region the solver blocks. Blitted at its natural size rather than
+     * stretched to a rectangle — a resample here would smear the alignment the slice was built for.
      *
-     * `source-over`, deliberately, in a file that composites the flow additively. The cloth is the
-     * one opaque object on screen; adding it to the field behind it would make it glow.
+     * `source-over`, deliberately, in a file that composites the flow additively. The specimen is
+     * the one opaque object on screen; adding it to the field behind it would make it glow.
      */
-    const drawMembrane = (r: Runtime, sx: number) => {
-      const { field, gx } = r
-      const cx = (field.band + field.thickness / 2) * sx
+    const drawMembrane = (r: Runtime) => {
+      const { gx } = r
       gx.globalCompositeOperation = 'source-over'
       gx.globalAlpha = 1
-      gx.drawImage(
-        r.knit,
-        cx - r.knitReach,
-        0,
-        r.knitReach * 2,
-        r.ch,
-      )
+      gx.drawImage(r.knit, r.knitX, 0, r.knitW, r.ch)
     }
 
     const drawGlyphs = (r: Runtime) => {
@@ -856,7 +945,6 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
 
     const composite = (r: Runtime) => {
       const { field, fx, gx, fc } = r
-      const sx = r.cw / field.w
       const L = layers.current
 
       if (L.particles) updateTrail(r)
@@ -896,7 +984,7 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       if (!L.glyphs || field.tick % glyphEvery === 0) {
         gx.setTransform(dpr, 0, 0, dpr, 0, 0)
         gx.clearRect(0, 0, r.cw, r.ch)
-        drawMembrane(r, sx)
+        drawMembrane(r)
         if (L.glyphs) drawGlyphs(r)
       }
     }
