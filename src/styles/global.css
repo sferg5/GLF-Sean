@@ -4044,13 +4044,12 @@ button {
 .tunnel__frame {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  /* Five rows: title, knit switch, the window, the layer switches, the closing words — the axis
-     marks live inside the window now. The window's row is `1fr`: it takes everything the others
-     leave, which more than doubles it on every screen while keeping the section exactly one
-     screen tall. A fixed doubling (36svh → 72svh) was the first attempt and it cannot fit:
-     72svh plus the type around it overruns a 768px iPad by ninety-odd pixels. `1fr` is the
-     honest version — as tall as the viewport allows, never taller. */
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  /* Four rows: title, knit switch, the window, the closing words — the axis marks live inside
+     the window. The window's row is `1fr`: it takes everything the others leave while keeping the
+     section exactly one screen tall. A fixed doubling (36svh → 72svh) was the first attempt and
+     it cannot fit: 72svh plus the type around it overruns a 768px iPad by ninety-odd pixels.
+     `1fr` is the honest version — as tall as the viewport allows, never taller. */
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: clamp(8px, 1.2svh, 18px);
 }
 
@@ -4090,6 +4089,36 @@ button {
   text-wrap: balance;
 }
 
+/* The knit switch — two plain words, the chosen one underlined. The treatment the layer switches
+   wore before they retired: a choice reads in type here, not in app furniture. The wordmark keeps
+   its capitals — ShowZero is a name, not a sentence. */
+.tunnel__fabs {
+  display: flex;
+  justify-content: center;
+  gap: clamp(14px, 2vw, 26px);
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+}
+
+.tunnel__fab {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--page-dim);
+  font: inherit;
+  font-weight: var(--weight-heading);
+  transition: color 0.14s var(--ease-out-quad);
+}
+
+.tunnel__fab:hover {
+  color: var(--page-ink);
+}
+
+.tunnel__fab[aria-pressed='true'] {
+  color: var(--page-ink);
+  box-shadow: inset 0 -1px 0 0 var(--page-ink);
+}
+
 /* The axis, inside the window
    Three marks in white along the top of the picture, on the same treatment as the knit's name in
    the corner below them — a shadow rather than a scrim, so they only darken what is directly
@@ -4125,104 +4154,6 @@ button {
    radius: a rounded corner on a full-bleed element is a card pretending to be a window, and the
    point of the bleed is that the diagram has no frame.
    ------------------------------------------------------------------ */
-
-/* The knit switch — the same segmented pill as the units, at the size a primary control earns.
-   The thumb is the container's ::before, slid by the data attribute React stamps on it. */
-.tunnel__fabs {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: fit-content;
-  margin: 0 auto;
-  padding: 3px;
-  border-radius: 100px;
-  background: rgba(20, 16, 15, 0.07);
-}
-
-.tunnel__fabs::before {
-  content: '';
-  position: absolute;
-  inset: 3px auto 3px 3px;
-  width: calc(50% - 3px);
-  border-radius: 100px;
-  background: #fff;
-  box-shadow:
-    0 1px 3px rgba(20, 16, 15, 0.16),
-    0 0 0 0.5px rgba(20, 16, 15, 0.04);
-  transition: translate 0.18s var(--ease-out-quad);
-}
-
-.tunnel__fabs[data-knit='next']::before {
-  translate: 100% 0;
-}
-
-.tunnel__fab {
-  position: relative;
-  z-index: 1;
-  padding: 7px 20px;
-  border: 0;
-  border-radius: 100px;
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  font-weight: var(--weight-heading);
-  color: var(--page-dim);
-  transition: color 0.18s var(--ease-out-quad);
-}
-
-.tunnel__fab[aria-pressed='true'] {
-  color: var(--page-ink);
-}
-
-/* The knit switch — a segmented pill, the thumb slid by the data attribute React stamps on
-   the container. */
-.tunnel__fabs {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: fit-content;
-  margin: 0 auto;
-  padding: 3px;
-  border-radius: 100px;
-  background: rgba(20, 16, 15, 0.07);
-}
-
-.tunnel__fabs::before {
-  content: '';
-  position: absolute;
-  inset: 3px auto 3px 3px;
-  width: calc(50% - 3px);
-  border-radius: 100px;
-  background: #fff;
-  box-shadow:
-    0 1px 3px rgba(20, 16, 15, 0.16),
-    0 0 0 0.5px rgba(20, 16, 15, 0.04);
-  transition: translate 0.18s var(--ease-out-quad);
-}
-
-.tunnel__fabs[data-knit='next']::before {
-  translate: 100% 0;
-}
-
-.tunnel__fab {
-  position: relative;
-  z-index: 1;
-  padding: 7px 20px;
-  border: 0;
-  border-radius: 100px;
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  font-weight: var(--weight-heading);
-  color: var(--page-dim);
-  transition: color 0.18s var(--ease-out-quad);
-}
-
-.tunnel__fab[aria-pressed='true'] {
-  color: var(--page-ink);
-}
 
 
 
@@ -4401,72 +4332,11 @@ button {
 
 
 
-/* Which knit is in the window — bottom left, in white, on the same shadow treatment as the axis
-   marks above: it only darkens what is directly under a glyph. It matters most in fullscreen,
-   where the switch that named the fabric is out of view. */
-.tunnel__knit {
-  position: absolute;
-  bottom: clamp(8px, 1.4svh, 14px);
-  left: clamp(20px, 4vw, 72px);
-  z-index: 1;
-  margin: 0;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  font-weight: var(--weight-heading);
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(20, 20, 24, 0.85);
-  pointer-events: none;
-}
-
-/* The version. The name carries the weight now that it is the whole label on the first channel;
-   the tag matches it, so "ShowZero v2" reads as one wordmark rather than a name and an aside. */
-.tunnel__knit em {
-  font-style: normal;
-}
 
 
 
-/* The controls
-   The layer switches under the window; the knit switch above it. The pace slider and the
-   metric/imperial pill are retired with the figures they served.
-   ------------------------------------------------------------------ */
-
-.tunnel__layers {
-  display: flex;
-  justify-content: center;
-  gap: clamp(14px, 2vw, 26px);
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-}
 
 
-
-@media (prefers-reduced-motion: reduce) {
-  .tunnel__fabs::before,
-  .tunnel__fab,
-  .tunnel__expand,
-  .tunnel__expand svg {
-    transition: none;
-  }
-}
-
-.tunnel__layer {
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  color: var(--page-dim);
-  font: inherit;
-  text-transform: lowercase;
-  transition: color 0.14s var(--ease-out-quad);
-}
-
-.tunnel__layer:hover {
-  color: var(--page-ink);
-}
-
-.tunnel__layer[aria-pressed='true'] {
-  color: var(--page-ink);
-  box-shadow: inset 0 -1px 0 0 var(--page-ink);
-}
 
 
 
@@ -4504,6 +4374,10 @@ button {
    either way — so reduced motion keeps the picture and drops the loop, which `lab/Perforation.tsx`
    does. All that's left here is the hint, which invites a gesture nobody is being offered. */
 @media (prefers-reduced-motion: reduce) {
+  .tunnel__fab {
+    transition: none;
+  }
+
   .tunnel__hint {
     display: none;
   }

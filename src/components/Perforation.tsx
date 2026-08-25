@@ -53,12 +53,6 @@ const MARKS = [
   { at: 1, label: 'inside air', align: 'end' },
 ] as const
 
-const LAYER_NAMES: { key: keyof Layers; label: string }[] = [
-  { key: 'particles', label: 'wind' },
-  { key: 'glyphs', label: 'flow' },
-  { key: 'heat', label: 'heat' },
-]
-
 export function Perforation() {
   const section = useRef<HTMLElement>(null)
   const reduced = !!useReducedMotion()
@@ -71,7 +65,9 @@ export function Perforation() {
    * you run while standing in front of it, and it should always open at the reference pace the
    * copy is written against.
    */
-  const [layers, setLayers] = useState<Layers>({ particles: true, glyphs: true, heat: true })
+  /* All three render layers, always on — the wind/flow/heat switches retired with the other
+     controls, and a display piece should simply show everything it has. */
+  const layers: Layers = { particles: true, glyphs: true, heat: true }
 
   /**
    * The wind, fixed at the reference pace. The slider went with the figures it drove: the section
@@ -200,21 +196,6 @@ export function Perforation() {
           hint="drag inside to disturb the flow"
           onFallbackFull={setFallbackFull}
         />
-
-        {/* The layer switches, centred under the pictures they turn on and off. */}
-        <span className="tunnel__layers">
-          {LAYER_NAMES.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              className="tunnel__layer"
-              aria-pressed={layers[key]}
-              onClick={() => setLayers((v) => ({ ...v, [key]: !v[key] }))}
-            >
-              {label}
-            </button>
-          ))}
-        </span>
 
         {/* The words, last — the prose block's composition, closing the section the way the knit
             prose closes its own: the reader has seen both pictures and the measurement between
@@ -346,12 +327,6 @@ function Channel({
             {hint}
           </p>
         )}
-        {/* The name alone. The old right-corner reading quoted open area and °C over ambient —
-            figures nobody has committed to. The one committed fact lives in the copy below. */}
-        <p className="tunnel__knit">
-          {spec.name}
-          {spec.tag && <em> {spec.tag}</em>}
-        </p>
         {/* Stops its own pointerdown: the window's drag handler sits on the host, and a click on
             the expand button should not also stir the corner of the flow. */}
         <button
