@@ -503,85 +503,93 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
     }
 
     /**
-     * The knit, drawn as a perforated sheet.
+     * The knit, drawn as thread.
      *
-     * **Two wrong versions preceded this one and both failed the same way.** First a flat band plus
-     * one filled rectangle per closed row — a wall of stacked bricks. Then each run of closed cells
-     * as its own rounded capsule, which turned the bricks into a column of floating pills: still a
-     * stack of separate objects, just with the corners off.
+     * **Three wrong versions came before this one.** Per-row rectangles were a brick wall; rounded
+     * capsules per run were a column of floating pills; a filled band with the holes punched out of
+     * it was, exactly as it looked, a hole punch taken to a sheet of paper. The first two treated
+     * the solid as a stack of objects. The third fixed that and still failed, for a different
+     * reason worth naming: it drew the membrane at the width the *solver* uses.
      *
-     * The mistake in both was treating the *solid* as the thing to draw. Fabric is continuous and
-     * the holes are cut through it, so that is the order of operations here: fill the whole band as
-     * one sheet, lay a lit gradient and a fibre texture over it, then punch every perforation out
-     * with `destination-out`. What is left is a membrane with holes in it rather than a pile of
-     * pieces — and the holes round off into the sheet the way a punched hole does.
+     * That width is a numerical device. `THICKNESS` is four cells because a pressure difference
+     * needs somewhere to fall across — at this grid that renders about twenty pixels wide, and
+     * twenty pixels of graded grey is a machined plate. Real knit seen in section is a *thread*: a
+     * couple of pixels, with gaps where the perforations are.
      *
-     * Safe on this canvas because the glyph layer is cleared immediately before this runs and drawn
-     * immediately after: the only thing `destination-out` can erase is the sheet itself.
-     *
-     * None of it touches the physics. The membrane the flow meets is `field.perm`, cell by cell, and
-     * the runs below are read from exactly that.
+     * So the drawn width is decoupled from the solved one. A thin warm filament on round caps, its
+     * segments carrying a little deterministic waver in position and weight, with a wider breath of
+     * fuzz behind it for the fibre halo. The flow still meets the full four-cell band — `field.perm`
+     * is untouched — and the picture stops claiming the fabric is a wall.
      */
     const drawMembrane = (r: Runtime, sx: number, sy: number) => {
       const { field, gx } = r
-      const x0 = field.band * sx
-      const w = field.thickness * sx
+      /* Centre of the solved band, which is where a thread this thin belongs. */
+      const cx = (field.band + field.thickness / 2) * sx
+      /* Thin, and floored so it survives a small window — but nothing like the band's own width. */
+      const core = Math.max(1.6, Math.min(3.4, sx * 0.8))
 
       gx.globalCompositeOperation = 'source-over'
+      gx.lineCap = 'round'
 
-      /* Lit across the band: dark at the outside face, brightest just inside it, mid at the skin
-         side. That is a cylinder's shading, and it is what stops the sheet reading as a flat chip. */
-      const lit = gx.createLinearGradient(x0, 0, x0 + w, 0)
-      lit.addColorStop(0, `rgba(${SPECIMEN},0.42)`)
-      lit.addColorStop(0.3, `rgba(${SPECIMEN},0.9)`)
-      lit.addColorStop(0.66, `rgba(${SPECIMEN},0.66)`)
-      lit.addColorStop(1, `rgba(${SPECIMEN},0.46)`)
-      gx.fillStyle = lit
-      gx.fillRect(x0, 0, w, r.ch)
-
-      /* Fibre. Fine cross-channel striations at a hair under a pixel of contrast — deterministic,
-         because a texture that reshuffles every frame reads as static rather than as thread. */
-      const lines = Math.ceil(r.ch / 3)
-      for (let i = 0; i < lines; i++) {
-        const y = i * 3
-        const a = 0.05 + 0.05 * Math.abs(Math.sin(i * 1.7))
-        gx.fillStyle = `rgba(52,48,44,${a.toFixed(3)})`
-        gx.fillRect(x0, y, w, 1)
-      }
-
-      /* The perforations, punched. Runs of open cells rather than per-row rectangles, so one hole is
-         one hole — `SOLID_AT`'s threshold in the solver is 0.07 open, and 0.5 here is the midpoint
-         of the supersampled edge, which is where a hole's rim visually is. */
-      const holes: [number, number][] = []
+      /* Runs of solid, read off the same field the flow meets. */
+      const runs: [number, number][] = []
       let from = -1
       for (let j2 = 0; j2 < field.h; j2++) {
-        const open = field.perm[field.band + j2 * field.w]
-        const isOpen = open >= 0.5
-        if (isOpen && from < 0) from = j2
-        else if (!isOpen && from >= 0) {
-          holes.push([from, j2])
+        const solid = field.perm[field.band + j2 * field.w] < 0.5
+        if (solid && from < 0) from = j2
+        else if (!solid && from >= 0) {
+          runs.push([from, j2])
           from = -1
         }
       }
-      if (from >= 0) holes.push([from, field.h])
+      if (from >= 0) runs.push([from, field.h])
 
-      gx.globalCompositeOperation = 'destination-out'
-      gx.fillStyle = '#000'
-      for (const [a, b] of holes) {
-        const y = a * sy
-        const h = (b - a) * sy
-        /* Punched a touch wider than the band so the cut is clean through both faces. */
-        const pad = 1
+      /* The halo first — fibre does not have a hard edge, and a bare filament on a dark chamber
+         reads as wire. Wide, faint, and under the core. */
+      gx.strokeStyle = `rgba(${SPECIMEN},0.1)`
+      gx.lineWidth = core * 3.2
+      gx.beginPath()
+      for (const [a, b] of runs) {
+        const y0 = a * sy
+        const y1 = b * sy
+        if (y1 - y0 < 0.6) continue
+        gx.moveTo(cx, y0 + core * 0.5)
+        gx.lineTo(cx, y1 - core * 0.5)
+      }
+      gx.stroke()
+
+      /* The thread. Drawn per run rather than in one path so each segment can carry its own waver:
+         a knit is not machined, and a perfectly straight column of identical marks is the thing that
+         made every previous version look manufactured. Deterministic — a texture that reshuffles
+         every frame reads as static, not as thread. */
+      for (const [a, b] of runs) {
+        const y0 = a * sy
+        const y1 = b * sy
+        if (y1 - y0 < 0.6) continue
+        const waver = Math.sin(a * 1.31) * sx * 0.22
+        const weight = 0.84 + 0.32 * Math.abs(Math.sin(a * 0.77))
+        gx.strokeStyle = `rgba(${SPECIMEN},${(0.62 + 0.22 * Math.abs(Math.sin(a * 2.11))).toFixed(3)})`
+        gx.lineWidth = core * weight
         gx.beginPath()
-        if (typeof gx.roundRect === 'function') {
-          gx.roundRect(x0 - pad, y, w + pad * 2, h, Math.min(w * 0.5, h * 0.5))
-        } else {
-          gx.rect(x0 - pad, y, w + pad * 2, h)
-        }
-        gx.fill()
+        gx.moveTo(cx + waver, y0 + core * 0.5)
+        gx.lineTo(cx + waver, y1 - core * 0.5)
+        gx.stroke()
       }
 
-      gx.globalCompositeOperation = 'source-over'
+      /* A single highlight pass down the upstream face, thinner and brighter — the light in this
+         chamber comes from the side the air arrives on. */
+      gx.strokeStyle = 'rgba(255,253,250,0.34)'
+      gx.lineWidth = Math.max(0.75, core * 0.34)
+      gx.beginPath()
+      for (const [a, b] of runs) {
+        const y0 = a * sy
+        const y1 = b * sy
+        if (y1 - y0 < sy * 1.4) continue
+        const waver = Math.sin(a * 1.31) * sx * 0.22
+        gx.moveTo(cx + waver - core * 0.3, y0 + core * 0.9)
+        gx.lineTo(cx + waver - core * 0.3, y1 - core * 0.9)
+      }
+      gx.stroke()
     }
 
     const drawGlyphs = (r: Runtime) => {
