@@ -4013,10 +4013,10 @@ button {
      the space instead of leaving a band of page under them. */
   height: 100dvh;
   display: grid;
-  /* Two chambers and nothing else. There was a black band between them carrying an instruction, and
-     before that a hairline; both are gone. What keeps the two fields from bleeding into one tall
-     picture is the vertical pair of `.tunnel__window::after`'s falloffs — the separation belongs to
-     each picture rather than being drawn between them. */
+  /* Two chambers and nothing else between them. A hairline, then a black band carrying an
+     instruction, then a pair of vignettes at the join — all three have been tried and all three are
+     gone. The pictures butt directly, and `.tunnel` carries the same ground colour as the windows so
+     a fractional row height cannot open a light seam at the boundary. */
   grid-template-rows: 1fr 1fr;
   overflow: hidden;
   background: var(--tunnel-ground, #0e1028);
@@ -4087,13 +4087,11 @@ button {
 /* Edge falloff, over the canvases rather than in them — the approach flow is genuinely uniform, so
    at full bleed it runs as a flat wall of one value straight into the window frame.
 
-   **The top and bottom pair arrived with the divider's removal and do its job instead.** With
-   nothing drawn between the chambers they meet on a bare pixel, and two fields of the same flow
-   touching read as one tall picture rather than as a comparison. A vignette on each window separates
-   them without putting a line back: the darkening belongs to each picture, so the pair still reads
-   as two, and at the outer edges of the screen it costs nothing because there was never anything
-   there. Lighter than the sides — a horizontal edge cuts across the flow, and the flow is the
-   subject. */
+   **Sides only.** A vertical pair was tried once the divider came out, on the theory that two fields
+   of the same flow touching would read as one tall picture — but two falloffs meeting at the join
+   add up to a soft dark band, which is a divider drawn in shadow instead of in ink. The chambers
+   meet on a clean edge instead: the last row of one picture against the first row of the next, and
+   nothing in between. */
 .tunnel__window::after {
   content: '';
   position: absolute;
@@ -4101,9 +4099,7 @@ button {
   pointer-events: none;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 15%),
-    linear-gradient(270deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0) 12%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0) 7%),
-    linear-gradient(0deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0) 7%);
+    linear-gradient(270deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0) 12%);
 }
 
 .tunnel__sr {
