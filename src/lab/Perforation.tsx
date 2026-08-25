@@ -348,7 +348,7 @@ export function usePerforation({
       window.addEventListener('pointercancel', up)
 
       fx.setTransform(1, 0, 0, 1, 0, 0)
-      fx.fillStyle = '#0a0908'
+      fx.fillStyle = '#2d2c30'
       fx.fillRect(0, 0, fc.width, fc.height)
 
       view = {
@@ -545,7 +545,7 @@ export function usePerforation({
       fx.setTransform(1, 0, 0, 1, 0, 0)
       fx.globalCompositeOperation = 'source-over'
       fx.globalAlpha = 1
-      fx.fillStyle = '#0a0908'
+      fx.fillStyle = '#2d2c30'
       fx.fillRect(0, 0, fc.width, fc.height)
       fx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
 

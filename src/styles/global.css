@@ -4044,13 +4044,13 @@ button {
 .tunnel__frame {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  /* Six rows: title, axis, knit switch, the window, the layer switches, the closing words. The
-     window's row is `1fr` — with the slider and the figure band gone it takes everything the
-     others leave, which more than doubles it on every screen while keeping the section exactly
-     one screen tall. A fixed doubling (36svh → 72svh) was the first attempt and it cannot fit:
+  /* Five rows: title, knit switch, the window, the layer switches, the closing words — the axis
+     marks live inside the window now. The window's row is `1fr`: it takes everything the others
+     leave, which more than doubles it on every screen while keeping the section exactly one
+     screen tall. A fixed doubling (36svh → 72svh) was the first attempt and it cannot fit:
      72svh plus the type around it overruns a 768px iPad by ninety-odd pixels. `1fr` is the
      honest version — as tall as the viewport allows, never taller. */
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: clamp(8px, 1.2svh, 18px);
 }
 
@@ -4090,26 +4090,23 @@ button {
   text-wrap: balance;
 }
 
-/* The axis
-   Two marks, in the page's own small type rather than in tracked mono. The mono was the single
-   biggest reason this section read as a different site: nothing else on the page sets a label
-   that way.
+/* The axis, inside the window
+   Three marks in white along the top of the picture, on the same treatment as the knit's name in
+   the corner below them — a shadow rather than a scrim, so they only darken what is directly
+   under a glyph.
    ------------------------------------------------------------------ */
-.tunnel__axis {
-  position: relative;
-  height: 1.4em;
-  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
-  color: var(--page-dim);
-}
 
 .tunnel__mark {
   position: absolute;
-  bottom: 0;
+  top: clamp(10px, 1.6svh, 16px);
+  z-index: 1;
+  font-size: clamp(0.78rem, 0.9vw, 0.9rem);
+  color: rgba(255, 255, 255, 0.66);
+  text-shadow: 0 1px 4px rgba(20, 20, 24, 0.85);
   white-space: nowrap;
+  pointer-events: none;
 }
 
-/* The only mark whose position is data — it has to land on the fraction the physics puts the
-   wall at. */
 .tunnel__mark[data-align='centre'] {
   translate: -50% 0;
 }
@@ -4118,10 +4115,9 @@ button {
   left: clamp(20px, 4vw, 72px);
 }
 
-/* The far end takes the type's own inset rather than a percentage: flush against a full-bleed
-   edge, its trailing letter-space pushes the final glyph off the window. */
+/* Stepped in past the expand button, which owns the true corner. */
 .tunnel__mark[data-align='end'] {
-  right: clamp(20px, 4vw, 72px);
+  right: calc(clamp(20px, 4vw, 72px) + 46px);
 }
 
 /* The channel
@@ -4280,7 +4276,9 @@ button {
   height: 100%;
   min-height: 200px;
   overflow: clip;
-  background: #0a0908;
+  /* Grey, not black — the field reads as an instrument chamber rather than a void, and the cool
+     slate of ambient air still sits well proud of it. The lab's composite fill is the same hex. */
+  background: #2d2c30;
   cursor: crosshair;
   /* The window is a control — a drag in it pushes the flow — so a drag must not select the type
      either side of it or scroll the page out from under the gesture. */
@@ -4306,17 +4304,16 @@ button {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(10, 9, 8, 0.66) 0%, rgba(10, 9, 8, 0) 15%),
-    linear-gradient(270deg, rgba(10, 9, 8, 0.4) 0%, rgba(10, 9, 8, 0) 12%);
+    linear-gradient(90deg, rgba(45, 44, 48, 0.66) 0%, rgba(45, 44, 48, 0) 15%),
+    linear-gradient(270deg, rgba(45, 44, 48, 0.4) 0%, rgba(45, 44, 48, 0) 12%);
 }
 
 /* The one piece of type inside a picture, on the top channel only — an instruction repeated under
    both would be furniture. It goes as soon as it has been obeyed. */
 .tunnel__hint {
   position: absolute;
-  /* Top left, which is the quietest corner of the picture — the approach flow is uniform and dark
-     there. The two bottom corners are the labels' now. */
-  inset: clamp(8px, 1.4svh, 14px) auto auto clamp(20px, 4vw, 72px);
+  /* Bottom right — free since the corner reading retired, and the axis owns the top now. */
+  inset: auto clamp(20px, 4vw, 72px) clamp(8px, 1.4svh, 14px) auto;
   z-index: 1;
   margin: 0;
   font-size: clamp(0.78rem, 0.9vw, 0.88rem);
@@ -4404,9 +4401,20 @@ button {
 
 
 
+/* Which knit is in the window — bottom left, in white, on the same shadow treatment as the axis
+   marks above: it only darkens what is directly under a glyph. It matters most in fullscreen,
+   where the switch that named the fabric is out of view. */
 .tunnel__knit {
+  position: absolute;
+  bottom: clamp(8px, 1.4svh, 14px);
   left: clamp(20px, 4vw, 72px);
+  z-index: 1;
+  margin: 0;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
   font-weight: var(--weight-heading);
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(20, 20, 24, 0.85);
+  pointer-events: none;
 }
 
 /* The version. The name carries the weight now that it is the whole label on the first channel;
@@ -4489,13 +4497,6 @@ button {
   .tunnel__between-label {
     margin-bottom: 8px;
   }
-
-  /* The two corner labels would meet in the middle on a phone, so they stack in the left corner
-     instead — the knit's name first, its reading under it, which is the order they are read in. */
-  .tunnel__knit {
-    bottom: calc(clamp(8px, 1.4svh, 14px) + 1.35em);
-  }
-
 
 }
 

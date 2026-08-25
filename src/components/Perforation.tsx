@@ -175,19 +175,6 @@ export function Perforation() {
       <div className="tunnel__frame">
         <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
-        <div className="tunnel__axis" aria-hidden="true">
-          {MARKS.map((mark) => (
-            <span
-              key={mark.label}
-              className="tunnel__mark"
-              data-align={mark.align}
-              style={mark.align === 'centre' ? { left: `${mark.at * 100}%` } : undefined}
-            >
-              {mark.label}
-            </span>
-          ))}
-        </div>
-
         {/* The knit switch, over the window it changes — a segmented pill, one of two, never
             neither. Both fields are solving
             either way, so the switch lands instantly on a settled picture. */}
@@ -233,10 +220,10 @@ export function Perforation() {
             prose closes its own: the reader has seen both pictures and the measurement between
             them, and this is the sentence that says why. */}
         <div className="tunnel__between">
-          <p className="tunnel__between-label">about the perforations</p>
+          <p className="tunnel__between-label">about the fabric</p>
           <p className="tunnel__between-lead">
-            one thing is known about showzero v2: it moves 30% more air through the knit — and
-            that is exactly what this simulation is tuned to show.
+            showzero v2 breathes 30% more air through the knit — engineered airflow that carries
+            heat off your skin as fast as you build it.
           </p>
         </div>
 
@@ -341,6 +328,19 @@ function Channel({
       <div className="tunnel__window" ref={host} data-full={fallback || undefined}>
         <canvas className="tunnel__canvas" ref={flow} aria-hidden="true" />
         <canvas className="tunnel__canvas" ref={glyph} aria-hidden="true" />
+        {/* The axis, inside the picture it labels — white over the field, like the knit's name.
+            The right mark steps in past the expand button's corner. */}
+        {MARKS.map((mark) => (
+          <span
+            key={mark.label}
+            className="tunnel__mark"
+            data-align={mark.align}
+            style={mark.align === 'centre' ? { left: `${mark.at * 100}%` } : undefined}
+            aria-hidden="true"
+          >
+            {mark.label}
+          </span>
+        ))}
         {hint && (
           <p className="tunnel__hint" aria-hidden="true">
             {hint}
