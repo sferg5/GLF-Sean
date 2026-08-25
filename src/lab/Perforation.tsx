@@ -47,13 +47,17 @@ import {
 /* Palettes
    ------------------------------------------------------------------ */
 
+type Stops = [number, number, number, number][]
+
 type Scheme = {
   /** Human name, for the note below and for anyone reading a diff. */
   label: string
   /** The chamber behind the marks. The canvas paints it and hands it to CSS as a custom property. */
   ground: string
-  /** Ambient at 0, a cell with no airflow at all at 1. */
-  stops: [number, number, number, number][]
+  /** The heat raster: ambient at 0, a cell with no airflow at all at 1. */
+  heat: Stops
+  /** The tracers and glyphs: still air at 0, the fastest jet at 1. */
+  wind: Stops
 }
 
 /**
@@ -72,11 +76,8 @@ type Scheme = {
  * Mapped onto temperature, `tide`'s bright end reads as energetic before it reads as hot — striking
  * to look at, and a weaker carrier of the one thing the picture is trying to say.
  */
-const SCHEMES: Record<'ember' | 'tide', Scheme> = {
-  ember: {
-    label: 'ember',
-    ground: '#2d2c30',
-    stops: [
+/** Ember's ramp, kept verbatim — the shipped scheme's exact values. */
+const EMBER_RAMP: Stops = [
       [0.0, 104, 122, 148],
       [0.16, 126, 118, 148],
       [0.32, 158, 92, 108],
@@ -84,27 +85,54 @@ const SCHEMES: Record<'ember' | 'tide', Scheme> = {
       [0.62, 216, 48, 44],
       [0.76, 238, 59, 51],
       [0.88, 243, 126, 62],
-      [1.0, 248, 186, 116],
-    ],
+  [1.0, 248, 186, 116],
+]
+
+const SCHEMES: Record<'ember' | 'tide', Scheme> = {
+  /* Ember drives both layers off one ramp, which is what it always did — temperature everywhere,
+     brightness from speed. Listed twice rather than special-cased, so the two-ramp machinery has
+     nothing to branch on. */
+  ember: {
+    label: 'ember',
+    ground: '#2d2c30',
+    heat: EMBER_RAMP,
+    wind: EMBER_RAMP,
   },
   tide: {
     label: 'tide',
-    /* Deeper and bluer than ember's grey, and darker than the reference's own low end — the marks
-       composite additively, so the chamber has to sit *under* the indigo rather than beside it. The
-       first attempt used the reference's background colour here and the ambient flow vanished into
-       it: same hue, barely any luminance between them. */
-    ground: '#131533',
-    stops: [
-      /* Ambient is a periwinkle indigo well clear of the ground, so the approach flow reads as air
-         rather than as an empty box — the same correction `ember`'s cool end needed. */
-      [0.0, 100, 124, 205],
-      [0.14, 76, 132, 204],
-      [0.28, 60, 152, 192],
-      [0.42, 56, 178, 164],
-      [0.56, 72, 202, 122],
-      [0.7, 122, 222, 92],
-      [0.85, 192, 238, 104],
-      [1.0, 240, 250, 172],
+    /* Darker than the reference's own background: the marks composite additively, so the chamber
+       has to sit under the scale rather than beside it. An earlier pass used the reference navy
+       here and the ambient flow vanished into it — same hue, almost no luminance between them. */
+    ground: '#0e1028',
+    /**
+     * Heat, in blues alone — deep navy where the air is at ambient, pale ice where it has banked
+     * up against the skin. Two things made this the fix. Green in the microclimate read as gas
+     * rather than warmth, which is a hard thing to un-see once someone says it; and with the
+     * tracers now carrying speed, the raster is the only layer left telling the heat story, so it
+     * wants a scale of its own rather than a slice of a shared one. Brighter means hotter because
+     * the ground is dark: on a dark chamber, darker cannot mean more.
+     */
+    heat: [
+      [0.0, 26, 38, 88],
+      [0.22, 36, 58, 128],
+      [0.42, 50, 90, 176],
+      [0.6, 74, 130, 212],
+      [0.78, 116, 172, 232],
+      [1.0, 176, 214, 246],
+    ],
+    /**
+     * Wind, light blue through teal to green — slow air is a pale blue thread, a jet through a
+     * perforation is bright green. This is the reference's own mapping put back the right way
+     * round: it is a wind map, bright means fast, and that is now exactly what it means here.
+     */
+    wind: [
+      [0.0, 128, 172, 230],
+      [0.35, 104, 180, 226],
+      [0.6, 88, 192, 206],
+      /* The freestream lands about here — still teal, so green stays the mark of accelerated air. */
+      [0.76, 80, 202, 168],
+      [0.88, 94, 216, 120],
+      [1.0, 160, 238, 104],
     ],
   },
 }
@@ -127,15 +155,15 @@ const chosen = (): keyof typeof SCHEMES => {
 }
 
 const PALETTE = SCHEMES[chosen()]
-const STOPS = PALETTE.stops
 
-const ramp = (t: number): [number, number, number] => {
-  if (t <= 0) return [STOPS[0][1], STOPS[0][2], STOPS[0][3]]
-  const last = STOPS[STOPS.length - 1]
+/** One mixer, two scales. Linear between stops; clamped at both ends. */
+const mixStops = (stops: Stops, t: number): [number, number, number] => {
+  if (t <= 0) return [stops[0][1], stops[0][2], stops[0][3]]
+  const last = stops[stops.length - 1]
   if (t >= 1) return [last[1], last[2], last[3]]
-  for (let i = 0; i < STOPS.length - 1; i++) {
-    const a = STOPS[i]
-    const b = STOPS[i + 1]
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i]
+    const b = stops[i + 1]
     if (t >= a[0] && t <= b[0]) {
       const k = (t - a[0]) / (b[0] - a[0])
       return [a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k, a[3] + (b[3] - a[3]) * k]
@@ -144,10 +172,44 @@ const ramp = (t: number): [number, number, number] => {
   return [last[1], last[2], last[3]]
 }
 
-/** Quantisation: the number of `fillStyle` changes a frame costs, not a number of colours. */
+/** Temperature → colour, for the heat raster. */
+const heatRamp = (t: number) => mixStops(PALETTE.heat, t)
+/** Speed → colour, for the tracers and the glyphs. */
+const windRamp = (t: number) => mixStops(PALETTE.wind, t)
+
+/**
+ * Where the top of the wind *colour* scale sits, as a multiple of the freestream.
+ *
+ * Separate from the brightness normalisation, and that separation was the fix: brightness runs to
+ * 2.3× the freestream, generous headroom that keeps a gust from blowing out — but nothing in this
+ * flow goes that fast. The peak through a perforation is about 1.2× the freestream, so on a 2.3×
+ * scale every jet sat mid-ramp and the green end was never reached.
+ *
+ * **1.35 rather than 1.2, and the ramp is weighted to match.** At 1.2 the freestream itself landed
+ * at 0.83 of the scale, which painted the entire approach flow green and left the wake behind the
+ * knit blue — true (upstream *is* the fastest broad region, and a resistive membrane decelerates
+ * what passes it) but backwards to read: it says the outside air is the story. At 1.35 the
+ * freestream lands near 0.74, where the ramp is still teal, so green is reserved for air that has
+ * been *accelerated* — the jets squeezing through the perforations, which is the thing worth
+ * looking at.
+ */
+const WIND_TOP = 1.35
+
+const windOf = (speed: number, wind: number) => {
+  const n = speed / Math.max(1e-4, WIND_TOP * wind)
+  return n < 0 ? 0 : n > 1 ? 1 : n
+}
+
+/**
+ * Quantisation: the number of `fillStyle` changes a frame costs, not a number of colours.
+ *
+ * Off the **wind** ramp — a tracer's colour is how fast the air it is made of is moving. It used to
+ * be its temperature, which left the streaklines and the raster saying the same thing twice and the
+ * flow itself unlabelled.
+ */
 const BINS = 14
 const INK = Array.from({ length: BINS }, (_, i) => {
-  const [r, g, b] = ramp((i + 0.5) / BINS)
+  const [r, g, b] = windRamp((i + 0.5) / BINS)
   return `rgb(${r | 0},${g | 0},${b | 0})`
 })
 
@@ -460,7 +522,7 @@ export function usePerforation({
       const { field } = r
       for (let i = 0; i < field.temp.length; i++) {
         const t = tempOf(field.temp[i])
-        const [cr, cg, cb] = ramp(t)
+        const [cr, cg, cb] = heatRamp(t)
         const o = i * 4
         d[o] = cr | 0
         d[o + 1] = cg | 0
@@ -521,7 +583,8 @@ export function usePerforation({
           const uu = sample(field, field.u, gxv, gy)
           const vv = sample(field, field.v, gxv, gy)
           /* Speed decides whether a mark is drawn and how bright; temperature decides its colour. */
-          let sp = (Math.hypot(uu, vv) - lo) / Math.max(1e-4, hi - lo)
+          const raw = Math.hypot(uu, vv)
+          let sp = (raw - lo) / Math.max(1e-4, hi - lo)
           sp = sp < 0 ? 0 : sp > 1 ? 1 : sp
           if (sp < 0.03) continue
           let g = 4
@@ -529,14 +592,15 @@ export function usePerforation({
             const q = Math.round(Math.atan2(vv, uu) / (Math.PI / 4))
             g = ((q % 4) + 4) % 4
           }
-          const t = tempOf(sample(field, field.temp, gxv, gy))
-          const bi = Math.min(B - 1, (t * (B - 1)) | 0)
+          /* Binned by speed, like the tracers: a glyph is a flow mark, and the heat raster under
+             it is what carries temperature. */
+          const bi = Math.min(B - 1, (windOf(raw, field.wind) * (B - 1)) | 0)
           bins[bi][g].push(cx, cy, sp)
         }
       }
 
       for (let b = 0; b < B; b++) {
-        const [cr, cg, cb] = ramp((b + 0.5) / B)
+        const [cr, cg, cb] = windRamp((b + 0.5) / B)
         gx.fillStyle = `rgb(${cr | 0},${cg | 0},${cb | 0})`
         for (let gi = 0; gi < 5; gi++) {
           const list = bins[b][gi]
@@ -571,17 +635,18 @@ export function usePerforation({
       r.tx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
       r.tx.globalCompositeOperation = 'lighter'
 
-      /* Bucketed by temperature — the colour axis — and given an alpha from speed, which is the
-         brightness axis. One bucket is one `fillStyle`; alpha varies inside it. */
+      /* Bucketed by speed, which is now both the colour axis and the brightness axis: a slow
+         thread is a dim pale blue, a jet is a bright green. One bucket is one `fillStyle`; alpha
+         varies inside it, so a bucket is a shade rather than a flat band. */
       const buckets: number[][] = Array.from({ length: BINS }, () => [])
       const n = Math.round(live * v.density)
       for (let i = 0; i < n; i++) {
         const x = r.swarm.x[i]
         const y = r.swarm.y[i]
-        let sp = (sample(field, field.spd, x, y) - lo) / span
+        const raw = sample(field, field.spd, x, y)
+        let sp = (raw - lo) / span
         sp = sp < 0 ? 0 : sp > 1 ? 1 : sp
-        const t = tempOf(sample(field, field.temp, x, y))
-        const bi = Math.min(BINS - 1, (t * (BINS - 1)) | 0)
+        const bi = Math.min(BINS - 1, (windOf(raw, field.wind) * (BINS - 1)) | 0)
         buckets[bi].push(x * sx, y * sy, sp)
       }
       for (let b = 0; b < BINS; b++) {
