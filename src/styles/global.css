@@ -4021,8 +4021,13 @@ button {
   display: grid;
   align-content: center;
   /* Block padding only. The type takes the page's own inset per element; the channel takes none,
-     which is what lets it bleed. */
-  padding: clamp(32px, 5.5vh, 78px) 0;
+     which is what lets it bleed.
+
+     Every vertical size in this section is budgeted in `svh` to sum inside one iPad screen —
+     landscape, 768px, the tightest display this is headed for. "One screen, no scroll" is a
+     property of these clamps, not a hope about the content: padding + seven row gaps + title +
+     slider + axis + two chambers + the verdict band + the switches + the closing words ≈ 95svh. */
+  padding: clamp(20px, 3svh, 56px) 0;
   background: var(--page);
   color: var(--page-ink);
 }
@@ -4033,7 +4038,7 @@ button {
 .tunnel__frame {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(10px, 1.7svh, 22px);
+  gap: clamp(8px, 1.2svh, 18px);
 }
 
 /* Everything that is type takes the prose section's horizontal inset, so the left edge of this
@@ -4119,7 +4124,20 @@ button {
   gap: 0;
 }
 
-/* The band between the chambers
+/* The band between the chambers — the verdict's room now.
+   Centred rather than on the prose grid: these are figures, not a sentence, and they were centred
+   when they lived under the headline. The band's padding is what keeps the two chambers apart.
+   ------------------------------------------------------------------ */
+
+.tunnel__mid {
+  display: grid;
+  justify-items: center;
+  gap: clamp(8px, 1.4svh, 16px);
+  padding: clamp(14px, 2.2svh, 40px) clamp(20px, 4vw, 72px);
+  background: var(--page);
+}
+
+/* The closing words
    The prose block's composition in miniature: the label out on the first column with two empty
    ones after it, the statement running from the fifth to the twelfth. That gap is what makes it
    read as the page speaking rather than as a caption pinned between two pictures.
@@ -4129,7 +4147,7 @@ button {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 0 clamp(12px, 1.6vw, 28px);
-  padding: clamp(30px, 5.5svh, 72px) clamp(20px, 4vw, 72px);
+  padding: clamp(14px, 2.4svh, 52px) clamp(20px, 4vw, 72px);
   background: var(--page);
 }
 
@@ -4166,7 +4184,9 @@ button {
      band of page underneath — and then raised again by a fifth on review. Each stop of this clamp
      is 1.2× the last version's: the pictures are the argument, and the page around them had more
      spare height than the argument did. */
-  height: clamp(168px, 28.8svh, 348px);
+  /* The biggest single line in the section's svh budget: two of these at 19svh is what leaves
+     room for everything between and after them on a 768px iPad. */
+  height: clamp(116px, 17.5svh, 310px);
   overflow: clip;
   background: #0a0908;
   cursor: crosshair;
@@ -4411,9 +4431,7 @@ button {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: fit-content;
-  /* Tucked toward the track it re-labels: the slider row is one thin line, and at the frame's full
-     gap the pill floated between the control and the axis belonging to neither. */
-  margin: calc(-1 * clamp(2px, 0.6svh, 8px)) auto 0;
+  margin: 0 auto;
   padding: 2.5px;
   border-radius: 100px;
   background: rgba(20, 16, 15, 0.07);

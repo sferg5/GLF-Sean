@@ -21,12 +21,13 @@ import { useSyncExternalStore } from 'react'
  * the root is the shoe page, always.
  */
 
-export type PageId = 'shoes' | 'show-zero' | 'guest-journey'
+export type PageId = 'shoes' | 'show-zero' | 'air-flow' | 'guest-journey'
 
 /** The nav's items, in its order. Labels are display copy; ids are URL slugs. */
 export const PAGES: { id: PageId; label: string; title: string }[] = [
   { id: 'shoes', label: 'shoes', title: 'Shoe X-Ray — scroll transitions' },
   { id: 'show-zero', label: 'show zero', title: 'ShowZero — the fabric that shows nothing' },
+  { id: 'air-flow', label: 'air flow', title: 'ShowZero — the faster you go, the cooler the feel' },
   { id: 'guest-journey', label: 'guest journey', title: 'Guest Journey' },
 ]
 

@@ -183,26 +183,9 @@ export function Perforation() {
       <div className="tunnel__frame">
         <h2 className="tunnel__title tunnel__inset">{TITLE}</h2>
 
-        {/* The verdict, directly under the statement — three figures, and the first is live.
-            The pace leads because it is the reader's own number: the two comparisons to its right
-            are what that pace costs on one knit and buys on the other. */}
-        <div className="tunnel__verdict tunnel__inset" aria-hidden="true">
-          <p className="tunnel__figure">
-            <b>{speed(pace)}</b>
-            <span>is your speed</span>
-          </p>
-          <p className="tunnel__figure">
-            <b>{figures.ratio.toFixed(2)}×</b>
-            <span>more air through the knit</span>
-          </p>
-          <p className="tunnel__figure">
-            <b>{degrees(figures.drop)}</b>
-            <span>cooler against the skin</span>
-          </p>
-        </div>
-
-        {/* The control, centred under the figure it drives. No inline label and no output: the
-            first figure above it *is* the readout, and it updates as the thumb moves. */}
+        {/* The control, directly under the statement it acts out. No inline label and no output:
+            its live readout is the first figure in the band between the chambers, which is where
+            the eye is when the wind changes. */}
         <label className="tunnel__pace" aria-label="Set your pace">
           <input
             type="range"
@@ -213,22 +196,6 @@ export function Perforation() {
             onChange={(e) => setPace(Number(e.currentTarget.value))}
           />
         </label>
-
-        {/* Units, under the control — a segmented pill, with the thumb slid by the container's
-            data attribute so the two buttons stay plain text over it. */}
-        <div className="tunnel__units" data-units={units}>
-          {(['metric', 'imperial'] as const).map((u) => (
-            <button
-              key={u}
-              type="button"
-              className="tunnel__unit"
-              aria-pressed={units === u}
-              onClick={() => setUnits(u)}
-            >
-              {u}
-            </button>
-          ))}
-        </div>
 
         <div className="tunnel__axis" aria-hidden="true">
           {MARKS.map((mark) => (
@@ -254,16 +221,38 @@ export function Perforation() {
             onFallbackFull={setFallbackFull}
           />
 
-          {/* The band between the chambers, and it earns its height by saying what changed.
-              Same composition as the prose block upstairs — the label out on the first column,
-              the statement running from the fifth — so the page's voice interrupts the
-              instrument, rather than a caption floating between two pictures. */}
-          <div className="tunnel__between">
-            <p className="tunnel__between-label">about the perforations</p>
-            <p className="tunnel__between-lead">
-              showzero v2 cuts its perforations on a 1.4 mm pitch instead of 2.5 — thirteen jets
-              across the channel where today's knit has seven.
-            </p>
+          {/* The band between the chambers, now carrying the verdict — which is the right room
+              for it: the first figure is the pace both chambers share, and the other two are the
+              difference between the picture above this band and the picture below it. Reading
+              top to bottom the section now runs evidence, measurement, evidence. */}
+          <div className="tunnel__mid">
+            <div className="tunnel__verdict" aria-hidden="true">
+              <p className="tunnel__figure">
+                <b>{speed(pace)}</b>
+                <span>is your speed</span>
+              </p>
+              <p className="tunnel__figure">
+                <b>{figures.ratio.toFixed(2)}×</b>
+                <span>more air through the knit</span>
+              </p>
+              <p className="tunnel__figure">
+                <b>{degrees(figures.drop)}</b>
+                <span>cooler against the skin</span>
+              </p>
+            </div>
+            <div className="tunnel__units" data-units={units}>
+              {(['metric', 'imperial'] as const).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  className="tunnel__unit"
+                  aria-pressed={units === u}
+                  onClick={() => setUnits(u)}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
           </div>
 
           <Channel
@@ -290,6 +279,17 @@ export function Perforation() {
             </button>
           ))}
         </span>
+
+        {/* The words, last — the prose block's composition, closing the section the way the knit
+            prose closes its own: the reader has seen both pictures and the measurement between
+            them, and this is the sentence that says why. */}
+        <div className="tunnel__between">
+          <p className="tunnel__between-label">about the perforations</p>
+          <p className="tunnel__between-lead">
+            showzero v2 cuts its perforations on a 1.4 mm pitch instead of 2.5 — thirteen jets
+            across the channel where today's knit has seven.
+          </p>
+        </div>
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">

@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { SiteNav } from './components/SiteNav'
 import { CalloutLayoutProvider } from './components/CalloutLayout'
 import { ShoesPage } from './pages/ShoesPage'
+import AirFlowPage from './pages/AirFlowPage'
 import { GuestJourneyPage } from './pages/GuestJourneyPage'
 import { usePage } from './lib/page'
 
@@ -46,6 +47,8 @@ export function App() {
         <Suspense fallback={<PageFallback />}>
           <ShowZeroPage />
         </Suspense>
+      ) : page === 'air-flow' ? (
+        <AirFlowPage />
       ) : page === 'guest-journey' ? (
         <GuestJourneyPage />
       ) : (
