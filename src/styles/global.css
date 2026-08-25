@@ -4013,11 +4013,11 @@ button {
      the space instead of leaving a band of page under them. */
   height: 100dvh;
   display: grid;
-  /* Two chambers and nothing else between them. A hairline, then a black band carrying an
-     instruction, then a pair of vignettes at the join — all three have been tried and all three are
-     gone. The pictures butt directly, and `.tunnel` carries the same ground colour as the windows so
-     a fractional row height cannot open a light seam at the boundary. */
-  grid-template-rows: 1fr 1fr;
+  /* Two chambers and one black pixel between them. A pale hairline, then a black band carrying an
+     instruction, then a pair of vignettes at the join, then nothing at all — this is the fifth
+     answer and the quietest one that still answers. `1px` rather than a fraction: it is a rule, not
+     a row of the layout. */
+  grid-template-rows: 1fr 1px 1fr;
   overflow: hidden;
   background: var(--tunnel-ground, #0e1028);
 }
@@ -4050,6 +4050,157 @@ button {
 
 .tunnel__knit em {
   font-style: normal;
+}
+
+/* The rule between the chambers. Black rather than the ground colour: the ground is what both
+   pictures are made of, so a rule in it is invisible against them, and the one job here is to say
+   that the cloth running to the bottom of the first picture is not the cloth starting at the top of
+   the second. */
+.tunnel__rule {
+  background: #000;
+}
+
+/* The corner dock
+   Two dials, hidden until the bottom-left corner is under the pointer. This screen is a display and
+   a visible control panel on a display is furniture — but whoever sets it up needs to reach the
+   pace and the tracer density, so the controls exist and stay out of the picture until asked for.
+
+   The wrapper is the hit zone and the panel is what moves: keeping `pointer-events` on the wrapper
+   is what makes the hover work at all, since a panel that starts at `opacity: 0` with pointer events
+   off can never be the thing you hover to reveal it.
+   ------------------------------------------------------------------ */
+
+.tunnel__dock {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 4;
+  /**
+   * Sized by its padding rather than by a fixed box.
+   *
+   * A fixed 132px square was tried and the panel came out squeezed to 105px inside it — a flex
+   * child shrinking to fit a parent that was never measured against it. The wrapper is now the
+   * panel plus the gap between it and the screen's corner, which is both the smallest hit zone that
+   * still lands under a pointer aimed at the corner and, not by accident, exactly the region a
+   * viewer has to cross to reach the panel.
+   *
+   * The left inset matches the knit's name, so the panel and the label share an edge. Everything
+   * inside this box stops being a drag surface for the flow, which is the whole cost of the dock and
+   * the reason it is no larger.
+   */
+  padding: 20px 24px clamp(44px, 5.6svh, 60px) clamp(20px, 4vw, 72px);
+}
+
+.tunnel__panel {
+  /* Clear of the knit's name, which owns the true corner — the wrapper's bottom padding is what
+     holds it up off the label. */
+  margin: 0;
+  display: grid;
+  gap: 12px;
+  width: 188px;
+  padding: 13px 14px 15px;
+  border: 1px solid rgba(226, 221, 210, 0.16);
+  border-radius: 3px;
+  background: rgba(6, 8, 20, 0.82);
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+  opacity: 0;
+  translate: 0 8px;
+  pointer-events: none;
+  transition:
+    opacity 0.22s var(--ease-out-quad),
+    translate 0.22s var(--ease-out-quad);
+}
+
+.tunnel__dock:hover .tunnel__panel,
+.tunnel__dock:focus-within .tunnel__panel {
+  opacity: 1;
+  translate: 0 0;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tunnel__panel {
+    transition: none;
+  }
+}
+
+.tunnel__dial {
+  display: grid;
+  gap: 7px;
+}
+
+.tunnel__dial-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.tunnel__dial-name {
+  color: rgba(255, 255, 255, 0.52);
+}
+
+/* The reading is mono so a digit changing does not move the ones beside it — a value that reflows
+   under your own drag is unreadable. */
+.tunnel__dial-read {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+/* The slider. Styled, not rebuilt — the native control already has the keyboard, drag and touch
+   behaviour that a div never gets right. Both vendor track/thumb pairs have to be written out
+   separately: they cannot be combined into one selector list, because an unrecognised pseudo-element
+   invalidates the whole rule. */
+.tunnel__dial input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  margin: 0;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+.tunnel__dial input[type='range']::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.tunnel__dial input[type='range']::-moz-range-track {
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.tunnel__dial input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  /* Centres an 11px thumb on a 2px track. */
+  margin-top: -4.5px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.tunnel__dial input[type='range']::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.tunnel__dial input[type='range']:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 4px;
+  border-radius: 2px;
 }
 
 /* The chambers

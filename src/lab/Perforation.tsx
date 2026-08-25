@@ -689,6 +689,16 @@ type Options = {
   channels: readonly ChannelRefs[]
   /** Live, so a parent re-render never restarts a running field. */
   pace: React.RefObject<number>
+  /**
+   * The reader's tracer multiplier, 1 being the tuned population.
+   *
+   * A ref for the same reason `pace` is one: it is read inside the loop and must never be a
+   * dependency of the effect that owns the fields. Multiplying the *population* rather than the
+   * spawn rate means it takes effect on the very next frame and costs nothing when it is 1 — and it
+   * changes only how densely the flow is sampled, never the flow. Both channels take the same
+   * number, so the comparison survives any setting of it.
+   */
+  density: React.RefObject<number>
   layers: React.RefObject<Layers>
   showing: boolean
   reduced: boolean
@@ -718,7 +728,8 @@ type Runtime = {
   knitW: number
   cw: number
   ch: number
-  density: number
+  /** Tracers per unit area, relative to the box the constants were tuned in. */
+  area: number
   stir: { on: boolean; x: number; y: number; px: number; py: number }
   detach: () => void
 }
@@ -731,7 +742,14 @@ type Runtime = {
  * controlled experiment. Both fields take the same wind and the same deterministic inflow
  * perturbation, so the only difference between them is the knit.
  */
-export function usePerforation({ channels, pace, layers, showing, reduced }: Options): void {
+export function usePerforation({
+  channels,
+  pace,
+  density,
+  layers,
+  showing,
+  reduced,
+}: Options): void {
   useEffect(() => {
     const runtimes: Runtime[] = []
 
@@ -745,6 +763,18 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
     let quality = 1
     let glyphEvery = 2
     let live = COUNT
+
+    /**
+     * How many tracers a channel carries this frame.
+     *
+     * Three terms: the governor's `live`, the channel's area scale, and the reader's multiplier.
+     * **It has to be one function.** The population is read twice a frame — once by `move`, which
+     * advances the tracers, and once by `updateTrail`, which draws them — and if those two ever
+     * disagree the difference is a band of particles that is stepped and never drawn, or drawn and
+     * never stepped. Clamped to `COUNT` because that is the length of the swarm's arrays.
+     */
+    const population = (r: Runtime) =>
+      Math.min(COUNT, Math.round(live * r.area * Math.max(0.05, density.current ?? 1)))
 
     const build = (): boolean => {
       for (const ch of channels) {
@@ -846,7 +876,7 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
            * same number of marks in a fraction of the pixels, which over-accumulates in the trail
            * and washes the field out. Scaled against the box the constants were tuned in.
            */
-          density: Math.max(0.32, Math.min(1.15, (cw * cheight) / (1400 * 300))),
+          area: Math.max(0.32, Math.min(1.15, (cw * cheight) / (1400 * 300))),
           stir,
           detach: () => {
             host.removeEventListener('pointerdown', down)
@@ -982,7 +1012,7 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
          a dim pale blue, a jet is a bright green. One bucket is one `fillStyle`; alpha varies
          inside it, so a bucket is a shade rather than a flat band. */
       const buckets: number[][] = Array.from({ length: BINS }, () => [])
-      const n = Math.round(live * r.density)
+      const n = population(r)
       for (let i = 0; i < n; i++) {
         const x = r.swarm.x[i]
         const y = r.swarm.y[i]
@@ -1064,7 +1094,7 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
           s.py = s.y
         }
         step(r.field, push)
-        move(r.field, r.swarm, Math.round(live * r.density))
+        move(r.field, r.swarm, population(r))
       }
     }
 
@@ -1130,7 +1160,7 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       window.removeEventListener('resize', onResize)
       teardown()
     }
-    /* `pace` and `layers` are refs by design — they must not restart the fields. */
+    /* `pace`, `density` and `layers` are refs by design — they must not restart the fields. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showing, reduced, channels, pace, layers])
+  }, [showing, reduced, channels, pace, density, layers])
 }

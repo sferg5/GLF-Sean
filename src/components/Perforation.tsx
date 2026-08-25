@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInView, useReducedMotion } from 'motion/react'
 import { type ChannelRefs, type Layers, usePerforation } from '../lab/Perforation'
 import { FABRICS, PACE, WALL, porosityOf, predict } from '../lib/perforation'
@@ -54,11 +54,20 @@ export function Perforation() {
   const layers: Layers = { particles: true, glyphs: true, heat: false }
 
   /**
-   * The wind, fixed at the reference pace. The slider went with the figures it drove: the section
-   * now makes exactly one claim — 30% more air — and a variable the copy never answers is a
-   * control that only raises questions.
+   * The two things a viewer can change, both of them behind the corner dock.
+   *
+   * **Pace is back, and it is safe now for the reason it was removed.** It went out because it drove
+   * on-screen figures — a live "3.1× more air" moving under a slider is a claim that will not hold
+   * still. There are no figures on this screen any more, so the slider changes the picture and
+   * nothing it says. Both channels take the same wind, which is the invariant that makes this a
+   * controlled comparison rather than two illustrations, so no setting of it can break the read.
+   *
+   * **Density is a display control, not a model one.** It multiplies how many tracers sample the
+   * flow; the flow is identical at either end of it. Worth being clear about, because it looks like
+   * a physics control and is not: turning it down does not mean less air.
    */
-  const pace = PACE.ref
+  const [pace, setPace] = useState(PACE.ref)
+  const [density, setDensity] = useState(1)
 
 
 
@@ -67,9 +76,13 @@ export function Perforation() {
   /** Solved from the geometry, so a label is right on the first paint. */
   const open = useMemo(() => FABRICS.map((f) => porosityOf(f) * 100), [])
 
-  /* A ref because the loop's contract wants one; the value never changes any more. */
+  /* Refs because the loop's contract wants them: a slider must move the running field, not tear it
+     down and rebuild it. Assigned on render rather than in an effect so the very next frame reads
+     the new value. */
   const paceRef = useRef(pace)
   paceRef.current = pace
+  const densityRef = useRef(density)
+  densityRef.current = density
   const layerRef = useRef(layers)
   layerRef.current = layers
 
@@ -100,6 +113,7 @@ export function Perforation() {
   usePerforation({
     channels,
     pace: paceRef,
+    density: densityRef,
     layers: layerRef,
     showing,
     reduced,
@@ -139,11 +153,55 @@ export function Perforation() {
         glyph={nowGlyph}
       />
 
+      {/* The join, as one black pixel.
+
+          The two chambers used to butt directly, and where the sliced knit runs to the bottom edge
+          of one picture and starts again at the top of the next, the two strips read as a single
+          piece of cloth crossing between them — the boundary disappeared exactly where the eye was
+          most likely to look. A rule fixes that, and it is a grid row rather than a border or an
+          overlay so that nothing can cross it: each canvas is clipped to its own window, and the
+          window stops one pixel short of its neighbour. */}
+      <div className="tunnel__rule" aria-hidden="true" />
+
       <Channel
         spec={FABRICS[1]}
         flow={nextFlow}
         glyph={nextGlyph}
       />
+
+      {/**
+       * The corner dock.
+       *
+       * Hidden until the corner is under the pointer, because this screen is a display and a control
+       * panel on a display is furniture — but the people setting it up need to reach the two dials
+       * that matter. The wrapper is an invisible hit zone in the bottom-left corner; the panel is
+       * what fades in, and it sits above the knit's name rather than over it.
+       *
+       * `:focus-within` opens it too, so the sliders are reachable by keyboard from a screen where
+       * nothing else is focusable — otherwise tabbing would land on a control nobody can see.
+       */}
+      <div className="tunnel__dock">
+        <div className="tunnel__panel">
+          <Dial
+            label="pace"
+            value={pace}
+            min={PACE.min}
+            max={PACE.max}
+            step={PACE.step}
+            onChange={setPace}
+            read={`${pace.toFixed(1)} km/h`}
+          />
+          <Dial
+            label="density"
+            value={density}
+            min={0.25}
+            max={1.6}
+            step={0.05}
+            onChange={setDensity}
+            read={`${Math.round(density * 100)}%`}
+          />
+        </div>
+      </div>
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
@@ -191,5 +249,51 @@ function Channel({
         </p>
       </div>
     </article>
+  )
+}
+
+/**
+ * One labelled slider.
+ *
+ * A native `input[type=range]`, styled rather than rebuilt: it already has the keyboard behaviour,
+ * the drag behaviour and the touch target, and every hand-rolled slider on the web is a worse
+ * version of it. The reading sits beside the label rather than under the thumb — a value that moves
+ * with the handle is a value you cannot read while dragging.
+ */
+function Dial({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  read,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (v: number) => void
+  read: string
+}) {
+  return (
+    <label className="tunnel__dial">
+      <span className="tunnel__dial-top">
+        <span className="tunnel__dial-name">{label}</span>
+        <span className="tunnel__dial-read">{read}</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.currentTarget.value))}
+        /* The window under the dock owns a drag handler; a drag on the slider is not a drag on the
+           flow. */
+        onPointerDown={(e) => e.stopPropagation()}
+      />
+    </label>
   )
 }
