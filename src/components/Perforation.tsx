@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInView, useReducedMotion } from 'motion/react'
-import { type ChannelRefs, type Layers, usePerforation } from '../lab/Perforation'
-import { FABRICS, PACE, WALL, porosityOf, predict } from '../lib/perforation'
+import { type Layers, usePerforation } from '../lab/Perforation'
+import { FABRICS, type FabricId, PACE, WALL, byId, porosityOf, predict } from '../lib/perforation'
 
 /**
  * ShowZero, twice, in the same wind.
@@ -75,6 +75,14 @@ export function Perforation() {
   const [layers, setLayers] = useState<Layers>({ particles: true, glyphs: true, heat: true })
 
   /**
+   * Which knit is in the window. Both fields solve continuously either way — see the note on the
+   * loop in `lab/Perforation.tsx` — so this is a display choice, and switching is instant.
+   */
+  const [knit, setKnit] = useState<FabricId>('now')
+  const knitRef = useRef(knit)
+  knitRef.current = knit
+
+  /**
    * Metric or imperial, display-only.
    *
    * The model runs in km/h and °C and nothing about it changes with this switch — `windFor`, the
@@ -100,21 +108,8 @@ export function Perforation() {
   const layerRef = useRef(layers)
   layerRef.current = layers
 
-  const nowFlow = useRef<HTMLCanvasElement>(null)
-  const nowGlyph = useRef<HTMLCanvasElement>(null)
-  const nextFlow = useRef<HTMLCanvasElement>(null)
-  const nextGlyph = useRef<HTMLCanvasElement>(null)
-
-  /* Stable across renders, or the effect that owns both fields would tear down on every movement
-     of the slider. */
-  const channels = useMemo(
-    () =>
-      [
-        { flow: nowFlow, glyph: nowGlyph, spec: FABRICS[0] },
-        { flow: nextFlow, glyph: nextGlyph, spec: FABRICS[1] },
-      ] as const satisfies readonly [ChannelRefs, ChannelRefs],
-    [],
-  )
+  const flow = useRef<HTMLCanvasElement>(null)
+  const glyphC = useRef<HTMLCanvasElement>(null)
 
   /**
    * The one thing about this section that depends on where the page is.
@@ -147,12 +142,18 @@ export function Perforation() {
   }, [])
 
   usePerforation({
-    channels,
+    flow,
+    glyph: glyphC,
+    fabrics: FABRICS,
+    active: knitRef,
     pace: paceRef,
     layers: layerRef,
     showing: showing || nativeFull || fallbackFull,
     reduced,
   })
+
+  const shown = byId(knit)
+  const shownIdx = knit === 'next' ? 1 : 0
 
   /**
    * Published for the checks.
@@ -210,59 +211,65 @@ export function Perforation() {
           ))}
         </div>
 
-        <div className="tunnel__channels">
-          <Channel
-            spec={FABRICS[0]}
-            open={open[0]}
-            rise={degrees(figures.rise[0])}
-            flow={nowFlow}
-            glyph={nowGlyph}
-            hint="drag inside to disturb the flow"
-            onFallbackFull={setFallbackFull}
-          />
+        {/* The knit switch, over the window it changes — the same segmented pill as the units,
+            because it is the same kind of fact: one of two, never neither. Both fields are solving
+            either way, so the switch lands instantly on a settled picture. */}
+        <div className="tunnel__fabs" data-knit={knit} role="group" aria-label="Fabric">
+          {FABRICS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className="tunnel__fab"
+              aria-pressed={knit === f.id}
+              onClick={() => setKnit(f.id)}
+            >
+              {f.name}
+              {f.tag ? ` ${f.tag}` : ''}
+            </button>
+          ))}
+        </div>
 
-          {/* The band between the chambers, now carrying the verdict — which is the right room
-              for it: the first figure is the pace both chambers share, and the other two are the
-              difference between the picture above this band and the picture below it. Reading
-              top to bottom the section now runs evidence, measurement, evidence. */}
-          <div className="tunnel__mid">
-            <div className="tunnel__verdict" aria-hidden="true">
-              <p className="tunnel__figure">
-                <b>{speed(pace)}</b>
-                <span>is your speed</span>
-              </p>
-              <p className="tunnel__figure">
-                <b>{figures.ratio.toFixed(2)}×</b>
-                <span>more air through the knit</span>
-              </p>
-              <p className="tunnel__figure">
-                <b>{degrees(figures.drop)}</b>
-                <span>cooler against the skin</span>
-              </p>
-            </div>
-            <div className="tunnel__units" data-units={units}>
-              {(['metric', 'imperial'] as const).map((u) => (
-                <button
-                  key={u}
-                  type="button"
-                  className="tunnel__unit"
-                  aria-pressed={units === u}
-                  onClick={() => setUnits(u)}
-                >
-                  {u}
-                </button>
-              ))}
-            </div>
+        <Channel
+          spec={shown}
+          open={open[shownIdx]}
+          rise={degrees(figures.rise[shownIdx])}
+          flow={flow}
+          glyph={glyphC}
+          hint="drag inside to disturb the flow"
+          onFallbackFull={setFallbackFull}
+        />
+
+        {/* The verdict, under the window. The first figure is the pace the wind is blowing at;
+            the other two compare the two knits and do not change with the switch — they are the
+            distance between what the two buttons show. */}
+        <div className="tunnel__mid">
+          <div className="tunnel__verdict" aria-hidden="true">
+            <p className="tunnel__figure">
+              <b>{speed(pace)}</b>
+              <span>is your speed</span>
+            </p>
+            <p className="tunnel__figure">
+              <b>{figures.ratio.toFixed(2)}×</b>
+              <span>more air through the knit</span>
+            </p>
+            <p className="tunnel__figure">
+              <b>{degrees(figures.drop)}</b>
+              <span>cooler against the skin</span>
+            </p>
           </div>
-
-          <Channel
-            spec={FABRICS[1]}
-            open={open[1]}
-            rise={degrees(figures.rise[1])}
-            flow={nextFlow}
-            glyph={nextGlyph}
-            onFallbackFull={setFallbackFull}
-          />
+          <div className="tunnel__units" data-units={units}>
+            {(['metric', 'imperial'] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                className="tunnel__unit"
+                aria-pressed={units === u}
+                onClick={() => setUnits(u)}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* The layer switches, centred under the pictures they turn on and off. */}
@@ -293,16 +300,16 @@ export function Perforation() {
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
-          Two cross-sections of the ShowZero knit in the same wind, outside air on the left and skin on
-          the right, with the knit standing across each channel a third of the way in. Colour is air
-          temperature: the body warms the air held against the skin, and airflow through the knit is
-          what carries that warmth away. The current knit is{' '}
-          {open[0].toFixed(0)} per cent open and holds a microclimate{' '}
-          {figures.rise[0].toFixed(1)} °C above ambient. The new knit is {open[1].toFixed(0)} per
+One cross-section of the ShowZero knit in a wind tunnel, outside air on the left and skin
+          on the right, with the knit standing across the channel a third of the way in. A switch
+          above the picture chooses which version is shown; colour is air temperature — the body
+          warms the air held against the skin, and airflow through the knit is what carries that
+          warmth away. The current knit is {open[0].toFixed(0)} per cent open and holds a
+          microclimate {figures.rise[0].toFixed(1)} °C above ambient; v2 is {open[1].toFixed(0)} per
           cent open, moves {figures.ratio.toFixed(1)} times the air, and holds it{' '}
-          {figures.drop.toFixed(1)} °C cooler at {pace.toFixed(1)} kilometres an hour.
-          Both fabrics and every figure here are placeholder, derived from the simulation rather
-          than measured in a wind tunnel.
+          {figures.drop.toFixed(1)} °C cooler at {pace.toFixed(1)} kilometres an hour. Both fabrics
+          and every figure here are placeholder, derived from the simulation rather than measured
+          in a wind tunnel.
         </p>
       </div>
     </section>

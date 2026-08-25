@@ -4111,22 +4111,63 @@ button {
   right: clamp(20px, 4vw, 72px);
 }
 
-/* The channels
-   Two of them, stacked. The window is dark and full bleed; the line under each says which knit it
-   is. No radius: a rounded corner on a full-bleed element is a card pretending to be a window, and
-   the point of the bleed is that the diagram has no frame.
+/* The channel
+   One window now, dark and full bleed, with the knit switch above it deciding what it shows. No
+   radius: a rounded corner on a full-bleed element is a card pretending to be a window, and the
+   point of the bleed is that the diagram has no frame.
    ------------------------------------------------------------------ */
 
-.tunnel__channels {
+/* The knit switch — the same segmented pill as the units, at the size a primary control earns.
+   The thumb is the container's ::before, slid by the data attribute React stamps on it. */
+.tunnel__fabs {
+  position: relative;
   display: grid;
-  /* No gap of its own: the band of copy between the chambers is the separation now, and it sets
-     its own height with padding. The windows meet it edge to edge. */
-  gap: 0;
+  grid-template-columns: 1fr 1fr;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 3px;
+  border-radius: 100px;
+  background: rgba(20, 16, 15, 0.07);
 }
 
-/* The band between the chambers — the verdict's room now.
-   Centred rather than on the prose grid: these are figures, not a sentence, and they were centred
-   when they lived under the headline. The band's padding is what keeps the two chambers apart.
+.tunnel__fabs::before {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc(50% - 3px);
+  border-radius: 100px;
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(20, 16, 15, 0.16),
+    0 0 0 0.5px rgba(20, 16, 15, 0.04);
+  transition: translate 0.18s var(--ease-out-quad);
+}
+
+.tunnel__fabs[data-knit='next']::before {
+  translate: 100% 0;
+}
+
+.tunnel__fab {
+  position: relative;
+  z-index: 1;
+  padding: 7px 20px;
+  border: 0;
+  border-radius: 100px;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: clamp(0.82rem, 0.95vw, 0.94rem);
+  font-weight: var(--weight-heading);
+  color: var(--page-dim);
+  transition: color 0.18s var(--ease-out-quad);
+}
+
+.tunnel__fab[aria-pressed='true'] {
+  color: var(--page-ink);
+}
+
+/* The verdict band, under the window now that there is only one.
+   Centred rather than on the prose grid: these are figures, not a sentence.
    ------------------------------------------------------------------ */
 
 .tunnel__mid {
@@ -4180,13 +4221,11 @@ button {
 
 .tunnel__window {
   position: relative;
-  /* Taller than the first pass, which is affordable now the labels are inside it rather than in a
-     band of page underneath — and then raised again by a fifth on review. Each stop of this clamp
-     is 1.2× the last version's: the pictures are the argument, and the page around them had more
-     spare height than the argument did. */
-  /* The biggest single line in the section's svh budget: two of these at 19svh is what leaves
-     room for everything between and after them on a 768px iPad. */
-  height: clamp(116px, 17.5svh, 310px);
+  /* Both old chambers' height in one window — the knit switch above it decides which fabric it
+     shows, so the picture gets the room the comparison used to split two ways. Still the biggest
+     single line in the section's svh budget, and still inside one 768px iPad screen with
+     everything around it. */
+  height: clamp(230px, 36svh, 640px);
   overflow: clip;
   background: #0a0908;
   cursor: crosshair;
@@ -4476,6 +4515,8 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .tunnel__units::before,
   .tunnel__unit,
+  .tunnel__fabs::before,
+  .tunnel__fab,
   .tunnel__expand,
   .tunnel__expand svg {
     transition: none;

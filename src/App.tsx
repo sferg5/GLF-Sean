@@ -1,5 +1,4 @@
 import { Suspense, lazy } from 'react'
-import { SiteNav } from './components/SiteNav'
 import { CalloutLayoutProvider } from './components/CalloutLayout'
 import { ShoesPage } from './pages/ShoesPage'
 import AirFlowPage from './pages/AirFlowPage'
@@ -40,9 +39,14 @@ function PageFallback() {
 export function App() {
   const page = usePage()
 
+  /**
+   * No nav. These pages are headed for displays where each screen is set once — by its URL,
+   * `?page=show-zero` or `?page=air-flow` — and a visitor paging through the site is not the
+   * audience. `components/SiteNav.tsx` stays in the tree unrendered, the same retirement
+   * `Fabric.tsx` got: rendering `<SiteNav />` here again is the whole reinstatement.
+   */
   return (
     <>
-      <SiteNav />
       {page === 'show-zero' ? (
         <Suspense fallback={<PageFallback />}>
           <ShowZeroPage />

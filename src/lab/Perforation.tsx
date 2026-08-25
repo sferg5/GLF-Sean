@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import {
+  type FabricId,
   type FabricSpec,
   type Field,
   HOT,
@@ -184,14 +185,14 @@ function move(f: Field, s: Swarm, live: number): void {
 
 export type Layers = { particles: boolean; glyphs: boolean; heat: boolean }
 
-export type ChannelRefs = {
+type Options = {
+  /** The one visible canvas pair. */
   flow: React.RefObject<HTMLCanvasElement | null>
   glyph: React.RefObject<HTMLCanvasElement | null>
-  spec: FabricSpec
-}
-
-type Options = {
-  channels: readonly [ChannelRefs, ChannelRefs]
+  /** Both knits, in `FABRICS` order. Both solve every frame; one renders. */
+  fabrics: readonly [FabricSpec, FabricSpec]
+  /** Which knit is on screen. A ref, so switching never rebuilds the fields. */
+  active: React.RefObject<FabricId>
   /** Live, so dragging the slider never restarts a running field. */
   pace: React.RefObject<number>
   layers: React.RefObject<Layers>
@@ -199,39 +200,56 @@ type Options = {
   reduced: boolean
 }
 
-/** Everything one channel needs, built once per layout. */
+/** Everything one knit needs — its physics and its accumulating buffers. The canvases on screen
+ * are shared and live in `View` below. */
 type Runtime = {
   spec: FabricSpec
   field: Field
   swarm: Swarm
+  trail: HTMLCanvasElement
+  tx: CanvasRenderingContext2D
+  heat: HTMLCanvasElement
+  hx: CanvasRenderingContext2D
+  raster: ImageData
+}
+
+type View = {
   host: HTMLElement
   fc: HTMLCanvasElement
   fx: CanvasRenderingContext2D
   gc: HTMLCanvasElement
   gx: CanvasRenderingContext2D
-  trail: HTMLCanvasElement
-  tx: CanvasRenderingContext2D
-  heat: HTMLCanvasElement
-  hx: CanvasRenderingContext2D
-  raster: ImageData | null
   cw: number
   ch: number
-  /** Particle population scale for this box — see the note where it is set. */
   density: number
-  stir: { on: boolean; x: number; y: number; px: number; py: number }
   detach: () => void
 }
 
 /**
- * The loop, driving both channels.
+ * The loop, driving both knits into one window.
  *
- * One `requestAnimationFrame` for the pair rather than one each — two independent loops would
- * drift apart under load, and two channels of a controlled experiment stepping at different rates
- * is not a controlled experiment. Both fields take the same wind and the same deterministic
- * inflow perturbation, so the only difference between them is the knit.
+ * **Both fields solve every frame; only the active one is drawn.** That asymmetry is the whole
+ * design: a temperature field takes tens of seconds to settle, so a toggle that rebuilt the field
+ * on switch would answer every press with a cold black box. Solving both keeps the knit you are
+ * *not* looking at settled and its streak trail current, so the switch is instant in both
+ * directions and always lands on a developed picture. It costs no more than the two stacked
+ * channels this replaced — the same two solves, and one composite instead of two.
+ *
+ * Both fields take the same wind and the same deterministic inflow perturbation, so the only
+ * difference between what the two buttons show is the knit.
  */
-export function usePerforation({ channels, pace, layers, showing, reduced }: Options): void {
+export function usePerforation({
+  flow,
+  glyph,
+  fabrics,
+  active,
+  pace,
+  layers,
+  showing,
+  reduced,
+}: Options): void {
   useEffect(() => {
+    let view: View | null = null
     const runtimes: Runtime[] = []
 
     /* Two raster scales. The flow buffers are fill-rate bound and look no worse at 1.5×; the glyph
@@ -244,116 +262,125 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
     let quality = 1
     let glyphEvery = 2
     let live = COUNT
+    /* Which knit the glyph canvas currently shows — a switch forces a redraw off-cadence. */
+    let drawnId: FabricId | null = null
+
+    const stir = { on: false, x: 0, y: 0, px: 0, py: 0 }
+
+    const activeRuntime = () =>
+      runtimes.find((r) => r.spec.id === active.current) ?? runtimes[0]
 
     const build = (): boolean => {
-      for (const ch of channels) {
-        const fc = ch.flow.current
-        const gc = ch.glyph.current
-        if (!fc || !gc) return false
-        const fx = fc.getContext('2d')
-        const gx = gc.getContext('2d')
-        const host = fc.parentElement
-        if (!fx || !gx || !host) return false
+      const fc = flow.current
+      const gc = glyph.current
+      if (!fc || !gc) return false
+      const fx = fc.getContext('2d')
+      const gx = gc.getContext('2d')
+      const host = fc.parentElement
+      if (!fx || !gx || !host) return false
 
+      const cw = Math.max(240, host.clientWidth)
+      const cheight = Math.max(90, host.clientHeight)
+      cellPx = cw < 700 ? 10 : 12
+
+      gc.width = Math.round(cw * dpr)
+      gc.height = Math.round(cheight * dpr)
+      fc.width = Math.round(cw * dprFlow)
+      fc.height = Math.round(cheight * dprFlow)
+
+      for (const spec of fabrics) {
         const trail = document.createElement('canvas')
         const tx = trail.getContext('2d')
         const heat = document.createElement('canvas')
         const hx = heat.getContext('2d')
         if (!tx || !hx) return false
-
-        const cw = Math.max(240, host.clientWidth)
-        const cheight = Math.max(90, host.clientHeight)
-        cellPx = cw < 700 ? 10 : 12
-
-        gc.width = Math.round(cw * dpr)
-        gc.height = Math.round(cheight * dpr)
-        for (const c of [fc, trail]) {
-          c.width = Math.round(cw * dprFlow)
-          c.height = Math.round(cheight * dprFlow)
-        }
+        trail.width = fc.width
+        trail.height = fc.height
 
         const field = createField(cw / cheight)
-        buildMembrane(field, ch.spec)
+        buildMembrane(field, spec)
         field.wind = windFor(pace.current)
         heat.width = field.w
         heat.height = field.h
 
-        const stir = { on: false, x: 0, y: 0, px: 0, py: 0 }
-
-        const at = (e: PointerEvent): [number, number] => {
-          const box = host.getBoundingClientRect()
-          return [
-            ((e.clientX - box.left) / box.width) * field.w,
-            ((e.clientY - box.top) / box.height) * field.h,
-          ]
-        }
-        const down = (e: PointerEvent) => {
-          const [x, y] = at(e)
-          stir.on = true
-          stir.x = x
-          stir.y = y
-          stir.px = x
-          stir.py = y
-          host.dataset.stirred = 'true'
-        }
-        const moved = (e: PointerEvent) => {
-          if (!stir.on) return
-          const [x, y] = at(e)
-          stir.x = x
-          stir.y = y
-        }
-        const up = () => {
-          stir.on = false
-        }
-
-        host.addEventListener('pointerdown', down)
-        window.addEventListener('pointermove', moved)
-        window.addEventListener('pointerup', up)
-        window.addEventListener('pointercancel', up)
-
-        fx.setTransform(1, 0, 0, 1, 0, 0)
-        fx.fillStyle = '#0a0908'
-        fx.fillRect(0, 0, fc.width, fc.height)
-
         runtimes.push({
-          spec: ch.spec,
+          spec,
           field,
           swarm: makeSwarm(field),
-          host,
-          fc,
-          fx,
-          gc,
-          gx,
           trail,
           tx,
           heat,
           hx,
           raster: hx.createImageData(field.w, field.h),
-          cw,
-          ch: cheight,
-          /**
-           * Particles per unit area, not per channel.
-           *
-           * A fixed population in a phone-width channel is the same number of marks in a fifth of
-           * the pixels, which over-accumulates in the trail buffer and washes the whole field to
-           * white — and a washed-out channel cannot show a temperature. Scaled against the desktop
-           * box the constants were tuned in, with a floor so a narrow channel still reads as flow.
-           */
-          density: Math.max(0.32, Math.min(1, (cw * cheight) / (1400 * 230))),
-          stir,
-          detach: () => {
-            host.removeEventListener('pointerdown', down)
-            window.removeEventListener('pointermove', moved)
-            window.removeEventListener('pointerup', up)
-            window.removeEventListener('pointercancel', up)
-          },
         })
       }
+
+      const at = (e: PointerEvent): [number, number] => {
+        const box = host.getBoundingClientRect()
+        const f = activeRuntime().field
+        return [
+          ((e.clientX - box.left) / box.width) * f.w,
+          ((e.clientY - box.top) / box.height) * f.h,
+        ]
+      }
+      const down = (e: PointerEvent) => {
+        const [x, y] = at(e)
+        stir.on = true
+        stir.x = x
+        stir.y = y
+        stir.px = x
+        stir.py = y
+        host.dataset.stirred = 'true'
+      }
+      const moved = (e: PointerEvent) => {
+        if (!stir.on) return
+        const [x, y] = at(e)
+        stir.x = x
+        stir.y = y
+      }
+      const up = () => {
+        stir.on = false
+      }
+
+      host.addEventListener('pointerdown', down)
+      window.addEventListener('pointermove', moved)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', up)
+
+      fx.setTransform(1, 0, 0, 1, 0, 0)
+      fx.fillStyle = '#0a0908'
+      fx.fillRect(0, 0, fc.width, fc.height)
+
+      view = {
+        host,
+        fc,
+        fx,
+        gc,
+        gx,
+        cw,
+        ch: cheight,
+        /**
+         * Particles per unit area, not per window. A fixed population in a phone-width window is
+         * the same number of marks in a fifth of the pixels, which over-accumulates in the trail
+         * buffer and washes the whole field to white. Scaled against the desktop box the constants
+         * were tuned in — this window is roughly the two old channels stacked, hence the larger
+         * reference area.
+         */
+        density: Math.max(0.32, Math.min(1, (cw * cheight) / (1400 * 420))),
+        detach: () => {
+          host.removeEventListener('pointerdown', down)
+          window.removeEventListener('pointermove', moved)
+          window.removeEventListener('pointerup', up)
+          window.removeEventListener('pointercancel', up)
+        },
+      }
+      drawnId = null
       return true
     }
 
     const teardown = () => {
-      for (const r of runtimes) r.detach()
+      view?.detach()
+      view = null
       runtimes.length = 0
     }
 
@@ -366,7 +393,6 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
        ---------------------------------------------------------------- */
 
     const drawHeat = (r: Runtime) => {
-      if (!r.raster) return
       const d = r.raster.data
       const { field } = r
       for (let i = 0; i < field.temp.length; i++) {
@@ -384,13 +410,14 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       r.hx.putImageData(r.raster, 0, 0)
     }
 
-    const drawMembrane = (r: Runtime, sx: number, sy: number) => {
-      const { field, gx } = r
+    const drawMembrane = (v: View, r: Runtime, sx: number, sy: number) => {
+      const { field } = r
+      const { gx } = v
       const x0 = field.band * sx
       const width = field.thickness * sx
       gx.globalCompositeOperation = 'source-over'
       gx.fillStyle = `rgba(${SPECIMEN},0.12)`
-      gx.fillRect(x0, 0, width, r.ch)
+      gx.fillRect(x0, 0, width, v.ch)
       for (let j = 0; j < field.h; j++) {
         const closed = 1 - field.perm[field.band + j * field.w]
         if (closed <= 0.02) continue
@@ -399,10 +426,11 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       }
     }
 
-    const drawGlyphs = (r: Runtime) => {
-      const { field, gx } = r
-      const cols = Math.ceil(r.cw / cellPx)
-      const rows = Math.ceil(r.ch / cellPx)
+    const drawGlyphs = (v: View, r: Runtime) => {
+      const { field } = r
+      const { gx } = v
+      const cols = Math.ceil(v.cw / cellPx)
+      const rows = Math.ceil(v.ch / cellPx)
       const base = layers.current.particles ? 0.36 : 1
 
       gx.font = `${cellPx - 1}px ${MONO}`
@@ -419,10 +447,10 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
 
       for (let rr = 0; rr < rows; rr++) {
         const cy = rr * cellPx + cellPx / 2
-        const gy = (cy / r.ch) * field.h
+        const gy = (cy / v.ch) * field.h
         for (let c = 0; c < cols; c++) {
           const cx = c * cellPx + cellPx / 2
-          const gxv = (cx / r.cw) * field.w
+          const gxv = (cx / v.cw) * field.w
           const gi = gxv | 0
           const gj = gy | 0
           if (gi < 0 || gi >= field.w || gj < 0 || gj >= field.h) continue
@@ -430,17 +458,17 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
           const uu = sample(field, field.u, gxv, gy)
           const vv = sample(field, field.v, gxv, gy)
           /* Speed decides whether a mark is drawn and how bright; temperature decides its colour. */
-          let s = (Math.hypot(uu, vv) - lo) / Math.max(1e-4, hi - lo)
-          s = s < 0 ? 0 : s > 1 ? 1 : s
-          if (s < 0.03) continue
+          let sp = (Math.hypot(uu, vv) - lo) / Math.max(1e-4, hi - lo)
+          sp = sp < 0 ? 0 : sp > 1 ? 1 : sp
+          if (sp < 0.03) continue
           let g = 4
-          if (s >= 0.07) {
+          if (sp >= 0.07) {
             const q = Math.round(Math.atan2(vv, uu) / (Math.PI / 4))
             g = ((q % 4) + 4) % 4
           }
           const t = tempOf(sample(field, field.temp, gxv, gy))
           const bi = Math.min(B - 1, (t * (B - 1)) | 0)
-          bins[bi][g].push(cx, cy, s)
+          bins[bi][g].push(cx, cy, sp)
         }
       }
 
@@ -460,49 +488,59 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       gx.globalAlpha = 1
     }
 
-    const render = (r: Runtime) => {
-      const { field, fx, gx, fc } = r
-      const sx = r.cw / field.w
-      const sy = r.ch / field.h
-      const L = layers.current
+    /**
+     * The trail advances for BOTH knits every frame, seen or not. It is an accumulation buffer —
+     * fourteen frames of history is what makes points read as flow — and history is exactly what
+     * a buffer that only ran while visible would not have at the moment of a switch.
+     */
+    const updateTrail = (v: View, r: Runtime) => {
+      const { field } = r
+      const sx = v.cw / field.w
+      const sy = v.ch / field.h
+      const lo = 0.06 * field.wind
+      const hi = 2.3 * field.wind
+      const span = Math.max(1e-4, hi - lo)
 
-      if (L.particles) {
-        const lo = 0.06 * field.wind
-        const hi = 2.3 * field.wind
-        const span = Math.max(1e-4, hi - lo)
+      r.tx.setTransform(1, 0, 0, 1, 0, 0)
+      r.tx.globalCompositeOperation = 'destination-out'
+      r.tx.fillStyle = 'rgba(0,0,0,0.045)'
+      r.tx.fillRect(0, 0, r.trail.width, r.trail.height)
+      r.tx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
+      r.tx.globalCompositeOperation = 'lighter'
 
-        r.tx.setTransform(1, 0, 0, 1, 0, 0)
-        r.tx.globalCompositeOperation = 'destination-out'
-        r.tx.fillStyle = 'rgba(0,0,0,0.045)'
-        r.tx.fillRect(0, 0, r.trail.width, r.trail.height)
-        r.tx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
-        r.tx.globalCompositeOperation = 'lighter'
-
-        /* Bucketed by temperature — the colour axis — and given an alpha from speed, which is the
-           brightness axis. One bucket is one `fillStyle`; alpha varies inside it. */
-        const buckets: number[][] = Array.from({ length: BINS }, () => [])
-        const n = Math.round(live * r.density)
-        for (let i = 0; i < n; i++) {
-          const x = r.swarm.x[i]
-          const y = r.swarm.y[i]
-          let s = (sample(field, field.spd, x, y) - lo) / span
-          s = s < 0 ? 0 : s > 1 ? 1 : s
-          const t = tempOf(sample(field, field.temp, x, y))
-          const bi = Math.min(BINS - 1, (t * (BINS - 1)) | 0)
-          buckets[bi].push(x * sx, y * sy, s)
-        }
-        for (let b = 0; b < BINS; b++) {
-          const list = buckets[b]
-          if (!list.length) continue
-          r.tx.fillStyle = INK[b]
-          const size = b > BINS * 0.62 ? 1.6 : 1.25
-          for (let i = 0; i < list.length; i += 3) {
-            r.tx.globalAlpha = 0.3 + 0.7 * Math.pow(list[i + 2], 0.8)
-            r.tx.fillRect(list[i], list[i + 1], size, size)
-          }
-        }
-        r.tx.globalAlpha = 1
+      /* Bucketed by temperature — the colour axis — and given an alpha from speed, which is the
+         brightness axis. One bucket is one `fillStyle`; alpha varies inside it. */
+      const buckets: number[][] = Array.from({ length: BINS }, () => [])
+      const n = Math.round(live * v.density)
+      for (let i = 0; i < n; i++) {
+        const x = r.swarm.x[i]
+        const y = r.swarm.y[i]
+        let sp = (sample(field, field.spd, x, y) - lo) / span
+        sp = sp < 0 ? 0 : sp > 1 ? 1 : sp
+        const t = tempOf(sample(field, field.temp, x, y))
+        const bi = Math.min(BINS - 1, (t * (BINS - 1)) | 0)
+        buckets[bi].push(x * sx, y * sy, sp)
       }
+      for (let b = 0; b < BINS; b++) {
+        const list = buckets[b]
+        if (!list.length) continue
+        r.tx.fillStyle = INK[b]
+        const size = b > BINS * 0.62 ? 1.6 : 1.25
+        for (let i = 0; i < list.length; i += 3) {
+          r.tx.globalAlpha = 0.3 + 0.7 * Math.pow(list[i + 2], 0.8)
+          r.tx.fillRect(list[i], list[i + 1], size, size)
+        }
+      }
+      r.tx.globalAlpha = 1
+    }
+
+    /** Composite the active knit to the screen. */
+    const composite = (v: View, r: Runtime) => {
+      const { field } = r
+      const { fx, gx, fc } = v
+      const sx = v.cw / field.w
+      const sy = v.ch / field.h
+      const L = layers.current
 
       fx.setTransform(1, 0, 0, 1, 0, 0)
       fx.globalCompositeOperation = 'source-over'
@@ -519,7 +557,7 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
            its resolution. */
         fx.imageSmoothingEnabled = L.particles
         fx.globalAlpha = L.particles ? 0.55 : 0.94
-        fx.drawImage(r.heat, 0, 0, r.cw, r.ch)
+        fx.drawImage(r.heat, 0, 0, v.cw, v.ch)
         fx.globalAlpha = 1
       }
       if (L.particles) {
@@ -531,33 +569,43 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       }
 
       /* The glyph layer keeps its own canvas and is not cleared on the frames it skips, which is
-         what makes running it at half rate free rather than flickery. */
-      if (!L.glyphs || field.tick % glyphEvery === 0) {
+         what makes running it at half rate free rather than flickery. A knit switch redraws it
+         immediately — a membrane pattern from the other fabric is not a stale frame, it is the
+         wrong picture. */
+      const switched = drawnId !== r.spec.id
+      if (!L.glyphs || switched || field.tick % glyphEvery === 0) {
         gx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        gx.clearRect(0, 0, r.cw, r.ch)
-        drawMembrane(r, sx, sy)
-        if (L.glyphs) drawGlyphs(r)
+        gx.clearRect(0, 0, v.cw, v.ch)
+        drawMembrane(v, r, sx, sy)
+        if (L.glyphs) drawGlyphs(v, r)
+        drawnId = r.spec.id
       }
     }
 
     const advance = () => {
       const wind = windFor(pace.current)
+      const act = activeRuntime()
       for (const r of runtimes) {
         r.field.wind = wind
-        const s = r.stir
-        const push: Stir = s.on
-          ? { x: s.x, y: s.y, dx: (s.x - s.px) * 0.9, dy: (s.y - s.py) * 0.9 }
-          : null
-        if (push) {
-          s.px = s.x
-          s.py = s.y
-        }
+        /* The drag disturbs the knit on screen. Pushing the hidden field too would be a change
+           the reader made without seeing, surfacing minutes later as inexplicable turbulence. */
+        const push: Stir =
+          stir.on && r === act
+            ? { x: stir.x, y: stir.y, dx: (stir.x - stir.px) * 0.9, dy: (stir.y - stir.py) * 0.9 }
+            : null
         step(r.field, push)
-        move(r.field, r.swarm, Math.round(live * r.density))
+        if (view) {
+          move(r.field, r.swarm, Math.round(live * view.density))
+          if (layers.current.particles) updateTrail(view, r)
+        }
+      }
+      if (stir.on) {
+        stir.px = stir.x
+        stir.py = stir.y
       }
     }
 
-    /* Resize rebuilds both channels from scratch — the grid is derived from the box. */
+    /* Resize rebuilds everything from scratch — the grid is derived from the box. */
     let resizeTimer = 0
     let relayout = false
     const onResize = () => {
@@ -589,9 +637,9 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       if (delta > 0 && delta < 400) frameMs += (delta - frameMs) * 0.12
 
       /**
-       * The governor. Two fields per frame is twice the pressure solve, so this matters more than
-       * it did with one: it sheds glyph cadence first, then particle population, and never the
-       * heat raster — which is the cheapest layer and the one carrying the argument.
+       * The governor. Two fields still solve per frame — the toggle's instant switch is paid for
+       * here — so it sheds glyph cadence first, then particle population, and never the heat
+       * raster, which is the cheapest layer and the one carrying the argument.
        */
       if (now - qualityAt > 900) {
         qualityAt = now
@@ -603,19 +651,18 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       }
 
       advance()
-      for (const r of runtimes) render(r)
+      if (view) composite(view, activeRuntime())
     }
 
     /**
      * Reduced motion, and the section that isn't showing, resolve the same way: solve far enough
      * for the microclimate to have settled, then stop. A still frame of a settled field is a
-     * legitimate rendering of this section — it is a cross-section diagram either way — and the
-     * temperature needs the longer run, because heat reaches steady state well after the flow
-     * does. The figures do not wait on this: they come from `predict()`, not from the field.
+     * legitimate rendering of this section — it is a cross-section diagram either way. The figures
+     * do not wait on this: they come from `predict()`, not from the field.
      */
     if (reduced || !showing) {
       for (let i = 0; i < 260; i++) advance()
-      for (const r of runtimes) render(r)
+      if (view) composite(view, activeRuntime())
     } else {
       /* A shorter warm-up before going live. This branch also runs on the rebuild that entering
          fullscreen forces, and a field that starts from rest opens on an empty black box for the
@@ -632,7 +679,7 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       window.removeEventListener('resize', onResize)
       teardown()
     }
-    /* `pace` and `layers` are refs by design — they must not restart the fields. */
+    /* `active`, `pace` and `layers` are refs by design — they must not restart the fields. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showing, reduced, channels, pace, layers])
+  }, [showing, reduced, flow, glyph, fabrics, active, pace, layers])
 }
