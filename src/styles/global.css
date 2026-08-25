@@ -4013,10 +4013,11 @@ button {
      the space instead of leaving a band of page under them. */
   height: 100dvh;
   display: grid;
-  /* Two chambers and the band between them. `auto` rather than a third fraction: the band is as
-     tall as its line plus its padding and not a row of the layout — every pixel it doesn't need
-     belongs to the pictures. */
-  grid-template-rows: 1fr auto 1fr;
+  /* Two chambers and nothing else. There was a black band between them carrying an instruction, and
+     before that a hairline; both are gone. What keeps the two fields from bleeding into one tall
+     picture is the vertical pair of `.tunnel__window::after`'s falloffs — the separation belongs to
+     each picture rather than being drawn between them. */
+  grid-template-rows: 1fr 1fr;
   overflow: hidden;
   background: var(--tunnel-ground, #0e1028);
 }
@@ -4049,35 +4050,6 @@ button {
 
 .tunnel__knit em {
   font-style: normal;
-}
-
-/* The band between the chambers
-   It replaces a hairline that was only ever keeping the two fields from bleeding together, and it
-   does that job better: a true black band is the one value on this screen that reads as a frame
-   edge rather than as more sky, so the chambers stay two pictures instead of one tall one.
-
-   The type is the page's headline treatment — the tight tracking and the heading weight off
-   `.sz__title` — at a size that belongs in a band rather than at the top of a page. The hero's
-   3.2rem here would be a third picture; what carries over is the voice, not the scale. It is the
-   loudest thing on the screen on purpose: it is the only line asking the viewer to do anything, and
-   the knits' names are named quietly under it.
-   ------------------------------------------------------------------ */
-
-.tunnel__seam {
-  display: grid;
-  place-items: center;
-  margin: 0;
-  padding: clamp(10px, 1.6svh, 18px) 20px;
-  background: #000;
-  font-size: clamp(1.05rem, 1.7vw, 1.6rem);
-  font-weight: var(--weight-heading);
-  line-height: 1.1;
-  letter-spacing: -0.021em;
-  color: #fff;
-  text-align: center;
-  /* It's an instruction about the pictures, not a control — the drag happens in the window. */
-  pointer-events: none;
-  user-select: none;
 }
 
 /* The chambers
@@ -4113,7 +4085,15 @@ button {
 }
 
 /* Edge falloff, over the canvases rather than in them — the approach flow is genuinely uniform, so
-   at full bleed it runs as a flat wall of one value straight into the window frame. */
+   at full bleed it runs as a flat wall of one value straight into the window frame.
+
+   **The top and bottom pair arrived with the divider's removal and do its job instead.** With
+   nothing drawn between the chambers they meet on a bare pixel, and two fields of the same flow
+   touching read as one tall picture rather than as a comparison. A vignette on each window separates
+   them without putting a line back: the darkening belongs to each picture, so the pair still reads
+   as two, and at the outer edges of the screen it costs nothing because there was never anything
+   there. Lighter than the sides — a horizontal edge cuts across the flow, and the flow is the
+   subject. */
 .tunnel__window::after {
   content: '';
   position: absolute;
@@ -4121,7 +4101,9 @@ button {
   pointer-events: none;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 15%),
-    linear-gradient(270deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0) 12%);
+    linear-gradient(270deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0) 12%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0) 7%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0) 7%);
 }
 
 .tunnel__sr {

@@ -139,16 +139,6 @@ export function Perforation() {
         glyph={nowGlyph}
       />
 
-      {/* The seam, said out loud.
-
-          A hairline used to sit here doing nothing but keeping the two pictures from bleeding into
-          each other. It now carries the one instruction, which is the only thing on this screen
-          that isn't a picture or a name — and putting it in the join rather than in a corner of the
-          top chamber makes it read as addressed to both of them, which it is. Black rather than the
-          ground colour: a true black band is the one value that reads as a frame edge instead of as
-          more sky, so the two fields stay separate pictures. */}
-      <p className="tunnel__seam">touch to redirect the air flow</p>
-
       <Channel
         spec={FABRICS[1]}
         flow={nextFlow}
