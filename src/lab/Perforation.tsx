@@ -364,8 +364,10 @@ function sliceKnit(field: Field, sx: number, sy: number, chPx: number, dpr: numb
      hole — so the mouth is a soft turn rather than a corner. */
   const bevel = Math.min(1.8, D * 0.3)
 
-  /* Courses, and the severed loops along them. Deterministic: a slice does not shimmer. */
-  const course = Math.max(2, sy * 0.55)
+  /* The course pitch — the vertical rhythm of the stitch. Deliberately coarser than the cell: at
+     half a cell each loop was two pixels of nothing, and stitching you cannot resolve is just
+     noise. Deterministic, because a slice does not shimmer. */
+  const course = Math.max(3.2, sy * 0.95)
 
   /**
    * The fibre that crosses the holes.
@@ -456,27 +458,87 @@ function sliceKnit(field: Field, sx: number, sy: number, chPx: number, dpr: numb
     kx.fillStyle = body
     kx.fillRect(s0 - 1, a - 1, D + 2, b - a + 2)
 
-    /* Stratification. Thin dark rules across the cut — the boundary between one course of loops and
-       the next, which is what makes a cut read as layered rather than as solid stock. */
-    kx.lineWidth = Math.max(0.45, course * 0.14)
-    kx.strokeStyle = 'rgba(40,54,51,0.38)'
+    /* The shadow between one course and the next. It used to be the whole texture; now it is only
+       the seating the loops sit in, so it gives most of its weight back to them. */
+    kx.lineWidth = Math.max(0.45, course * 0.12)
+    kx.strokeStyle = 'rgba(36,50,47,0.38)'
     kx.beginPath()
     for (let y = a + course; y < b - course * 0.4; y += course) {
+      /* Bowed, not ruled: a course of knit is a row of loops and sags between them. */
       kx.moveTo(s0, y)
-      kx.lineTo(s1, y)
+      kx.quadraticCurveTo(s0 + D / 2, y + course * 0.18, s1, y)
     }
     kx.stroke()
 
-    /* The cut yarn ends, catching the light. A severed loop is a bright ellipse on the cut face, and
-       a grid of identical ones is the thing that would make this look machined. */
+    /**
+     * The stitch, cut through.
+     *
+     * **What a slice of knit actually shows is not fibre, it is loops.** The version before this put
+     * one lit ellipse per course down the middle of the cut, which gave the material grain but no
+     * structure — it read as a fibrous solid rather than as something knitted. A knit is one yarn
+     * travelling front-to-back-to-front, so a section through it cuts each loop twice: two yarn ends
+     * per course, one near each face, and *which* of the two is forward alternates course by course
+     * because that is what interlocking means.
+     *
+     * So: two ends per course, offset either side of the centreline, swapping sides each course,
+     * with the far one smaller and dimmer because it is deeper in the cut. A thin arc links them —
+     * the crown of the loop crossing the thickness — and a second arc carries down to the next
+     * course's opposite leg, which is the yarn continuing. Drawn together they zigzag down the cut,
+     * and that zigzag is the thing the eye reads as stitching.
+     */
+    const rx = Math.max(0.75, D * 0.15)
+    const ry = Math.max(0.7, course * 0.24)
+    const lean = D * 0.21
+    const legX = (k: number) => s0 + D / 2 + (k % 2 === 0 ? -1 : 1) * lean
+
     let i = Math.round(a / course)
+    /* The yarn's path first, under the ends it connects — a loop crown crossing the thickness, then
+       the carry down to the next course on the other side. */
+    kx.lineCap = 'round'
+    kx.lineWidth = Math.max(0.5, rx * 0.7)
+    kx.strokeStyle = `rgba(${YARN_HI},0.16)`
+    kx.beginPath()
+    {
+      let k = i
+      for (let y = a + course * 0.5; y < b; y += course) {
+        k++
+        const near = legX(k)
+        const far = s0 + D - (near - s0)
+        kx.moveTo(far, y)
+        kx.quadraticCurveTo(s0 + D / 2, y - ry * 0.9, near, y)
+        if (y + course < b) {
+          kx.moveTo(near, y)
+          kx.quadraticCurveTo(near, y + course * 0.5, legX(k + 1), y + course)
+        }
+      }
+    }
+    kx.stroke()
+
     for (let y = a + course * 0.5; y < b; y += course) {
       i++
-      const u = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(i * 1.7))
-      const lit = 0.14 + 0.18 * Math.abs(Math.sin(i * 0.9))
+      const near = legX(i)
+      const far = s0 + D - (near - s0)
+
+      /* The far leg: deeper in the cut, so smaller and barely lit. */
+      kx.fillStyle = `rgba(${YARN_HI},0.13)`
+      kx.beginPath()
+      kx.ellipse(far, y, rx * 0.72, ry * 0.78, 0, 0, 6.284)
+      kx.fill()
+
+      /* The near leg: a round yarn end, lit from the upstream side and shadowed opposite, which is
+         the whole difference between a blob and something with a section. */
+      kx.fillStyle = 'rgba(28,40,37,0.52)'
+      kx.beginPath()
+      kx.ellipse(near + rx * 0.22, y + ry * 0.22, rx, ry, 0, 0, 6.284)
+      kx.fill()
+      const lit = 0.3 + 0.14 * Math.abs(Math.sin(i * 0.9))
       kx.fillStyle = `rgba(${YARN_HI},${lit.toFixed(3)})`
       kx.beginPath()
-      kx.ellipse(s0 + u * D, y, Math.max(0.5, D * 0.14), Math.max(0.4, course * 0.18), 0, 0, 6.284)
+      kx.ellipse(near, y, rx, ry, 0, 0, 6.284)
+      kx.fill()
+      kx.fillStyle = `rgba(255,255,255,${(lit * 0.7).toFixed(3)})`
+      kx.beginPath()
+      kx.ellipse(near - rx * 0.28, y - ry * 0.26, rx * 0.42, ry * 0.4, 0, 0, 6.284)
       kx.fill()
     }
 
