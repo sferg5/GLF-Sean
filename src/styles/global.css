@@ -4207,9 +4207,10 @@ button {
   height: 100%;
   min-height: 200px;
   overflow: clip;
-  /* Grey, not black — the field reads as an instrument chamber rather than a void, and the cool
-     slate of ambient air still sits well proud of it. The lab's composite fill is the same hex. */
-  background: #2d2c30;
+  /* The ground is the palette's, published as a custom property by `lab/Perforation.tsx` when it
+     builds — the canvas and this box must agree, and one of them owns the value. The fallback is
+     the shipped `ember` scheme's, for the frames before the first build. */
+  background: var(--tunnel-ground, #2d2c30);
   cursor: crosshair;
   /* The window is a control — a drag in it pushes the flow — so a drag must not select the type
      either side of it or scroll the page out from under the gesture. */
@@ -4235,8 +4236,10 @@ button {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(45, 44, 48, 0.66) 0%, rgba(45, 44, 48, 0) 15%),
-    linear-gradient(270deg, rgba(45, 44, 48, 0.4) 0%, rgba(45, 44, 48, 0) 12%);
+    /* Black rather than the ground's own colour: it darkens the edges of any palette, so the
+       falloff survives a scheme change without being restated in a third place. */
+    linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 15%),
+    linear-gradient(270deg, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0) 12%);
 }
 
 /* The one piece of type inside a picture, on the top channel only — an instruction repeated under

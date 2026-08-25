@@ -44,31 +44,90 @@ import {
 /* Ink
    ------------------------------------------------------------------ */
 
+/* Palettes
+   ------------------------------------------------------------------ */
+
+type Scheme = {
+  /** Human name, for the note below and for anyone reading a diff. */
+  label: string
+  /** The chamber behind the marks. The canvas paints it and hands it to CSS as a custom property. */
+  ground: string
+  /** Ambient at 0, a cell with no airflow at all at 1. */
+  stops: [number, number, number, number][]
+}
+
 /**
- * The ramp, as stops: ambient at 0, a cell with no airflow at all at 1.
+ * Two palettes, both kept.
  *
- * **The cool end is lifted well off the ground, and that was a correction.** It sat at a near-black
- * slate on the first pass, on the theory that ambient air should be quiet — and the result was a
- * channel that was four-fifths black, with the airflow invisible and a wall of fire at one end. The
- * approach flow is not background: it is the mechanism the whole claim rests on. So ambient is a
- * clearly visible cool slate, desaturated enough to read as the absence of heat rather than as a
- * colour of its own, and warmth is what adds saturation.
+ * Colour maps **temperature** in either one — that mapping is the section's argument and does not
+ * change with the skin. What changes is which colours the scale is made of.
  *
- * Brand red lands at 0.76, which is where the current knit's microclimate sits. That is the
- * placement that matters: the section's whole claim is the distance between the two channels on
- * this scale, so the fabric that has a problem needs to be unmistakably in the red and the one
- * that fixes it needs to be visibly short of it.
+ * `ember` is the shipped scheme: a cool slate at ambient rising through brand red to gold, built so
+ * red means heat and nothing else on the page has to compete with it.
+ *
+ * `tide` is the one under test, drawn off the wind-map reference — deep indigo at ambient through
+ * teal and green to a pale chartreuse at the top. Worth naming the tension honestly: in its source
+ * that palette encodes *wind speed*, where bright means fast, and the reason `ember` exists is that
+ * an earlier version of this section coloured by speed and so made the better fabric look hotter.
+ * Mapped onto temperature, `tide`'s bright end reads as energetic before it reads as hot — striking
+ * to look at, and a weaker carrier of the one thing the picture is trying to say.
  */
-const STOPS: [number, number, number, number][] = [
-  [0.0, 104, 122, 148],
-  [0.16, 126, 118, 148],
-  [0.32, 158, 92, 108],
-  [0.48, 186, 62, 68],
-  [0.62, 216, 48, 44],
-  [0.76, 238, 59, 51],
-  [0.88, 243, 126, 62],
-  [1.0, 248, 186, 116],
-]
+const SCHEMES: Record<'ember' | 'tide', Scheme> = {
+  ember: {
+    label: 'ember',
+    ground: '#2d2c30',
+    stops: [
+      [0.0, 104, 122, 148],
+      [0.16, 126, 118, 148],
+      [0.32, 158, 92, 108],
+      [0.48, 186, 62, 68],
+      [0.62, 216, 48, 44],
+      [0.76, 238, 59, 51],
+      [0.88, 243, 126, 62],
+      [1.0, 248, 186, 116],
+    ],
+  },
+  tide: {
+    label: 'tide',
+    /* Deeper and bluer than ember's grey, and darker than the reference's own low end — the marks
+       composite additively, so the chamber has to sit *under* the indigo rather than beside it. The
+       first attempt used the reference's background colour here and the ambient flow vanished into
+       it: same hue, barely any luminance between them. */
+    ground: '#131533',
+    stops: [
+      /* Ambient is a periwinkle indigo well clear of the ground, so the approach flow reads as air
+         rather than as an empty box — the same correction `ember`'s cool end needed. */
+      [0.0, 100, 124, 205],
+      [0.14, 76, 132, 204],
+      [0.28, 60, 152, 192],
+      [0.42, 56, 178, 164],
+      [0.56, 72, 202, 122],
+      [0.7, 122, 222, 92],
+      [0.85, 192, 238, 104],
+      [1.0, 240, 250, 172],
+    ],
+  },
+}
+
+/**
+ * Which palette is live.
+ *
+ * `DEFAULT_SCHEME` is the one that ships; `?scheme=ember` on the URL overrides it, so both can be
+ * looked at on the same build without a rebuild between them — which is the only way to actually
+ * compare two colour schemes, since nobody can hold the first one in their head while waiting for
+ * the second to compile. Read once at module scope: a palette change is a rebuild of every buffer,
+ * not something to hot-swap mid-frame.
+ */
+const DEFAULT_SCHEME: keyof typeof SCHEMES = 'tide'
+
+const chosen = (): keyof typeof SCHEMES => {
+  if (typeof window === 'undefined') return DEFAULT_SCHEME
+  const raw = new URLSearchParams(window.location.search).get('scheme')
+  return raw && raw in SCHEMES ? (raw as keyof typeof SCHEMES) : DEFAULT_SCHEME
+}
+
+const PALETTE = SCHEMES[chosen()]
+const STOPS = PALETTE.stops
 
 const ramp = (t: number): [number, number, number] => {
   if (t <= 0) return [STOPS[0][1], STOPS[0][2], STOPS[0][3]]
@@ -347,8 +406,12 @@ export function usePerforation({
       window.addEventListener('pointerup', up)
       window.addEventListener('pointercancel', up)
 
+      /* CSS owns the box, the canvas owns the pixels, and both need the same ground — so it is
+         published once here rather than written down in two places that can drift. */
+      host.style.setProperty('--tunnel-ground', PALETTE.ground)
+
       fx.setTransform(1, 0, 0, 1, 0, 0)
-      fx.fillStyle = '#2d2c30'
+      fx.fillStyle = PALETTE.ground
       fx.fillRect(0, 0, fc.width, fc.height)
 
       view = {
@@ -545,7 +608,7 @@ export function usePerforation({
       fx.setTransform(1, 0, 0, 1, 0, 0)
       fx.globalCompositeOperation = 'source-over'
       fx.globalAlpha = 1
-      fx.fillStyle = '#2d2c30'
+      fx.fillStyle = PALETTE.ground
       fx.fillRect(0, 0, fc.width, fc.height)
       fx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
 
