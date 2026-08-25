@@ -22,9 +22,8 @@
  * The temperature is *solved*, not asserted — change the open area and the skin figure moves
  * because the flow moved.
  *
- * **The one committed fact about v2 is +30% airflow**, and the two geometries are solved from it —
- * see the note over `FABRICS`. Today's knit keeps `lib/air.ts`'s 18% open area; v2 is whatever
- * geometry delivers 1.30× the solved throughflow, which lands near 22% open.
+ * **The two knits are 30% and 60% open**, solved exactly — see the note over `FABRICS`, including
+ * the caveat that open area and airflow are not the same number.
  *
  * **Every figure is solver-derived and none of it is measured.** The perforation geometry behind
  * each porosity is plausible rather than specified, and the conversion from solver units to °C and
@@ -64,12 +63,21 @@ export type FabricSpec = {
 /**
  * Both knits, in the order the argument runs: what it is now, then what it becomes.
  *
- * **One fact is known about v2: it moves 30% more air.** That is the entire committed claim, and
- * the geometry here is reverse-solved from it — v2's diameter and pitch were swept headlessly
- * (settle 800 steps, average the throughflow over 400 more) until the solved flow through v2 came
- * out 1.30× the flow through today's knit at running paces. The earlier version of this pair
- * carried `lib/air.ts`'s 18%/44% porosities and a 3.2× airflow ratio, which was a claim nobody
- * had made; these are the numbers that say only what the fabric team said.
+ * **30% open against 60% open**, solved exactly rather than approached — the diameter for each was
+ * found by sweeping `porosityOf` against the target, so the supersampled membrane the flow actually
+ * meets measures 30.0% and 60.0% and not merely something near them. Same 2.0mm pitch on both, so
+ * there is one variable between the chambers and it is hole size.
+ *
+ * **This is a wider gap than the pair it replaces, and deliberately.** The previous geometry was
+ * reverse-solved to a 1.30× throughflow ratio, and at that spacing the two chambers were nearly
+ * indistinguishable on screen: 30% more air is a real difference and an invisible one. Doubling the
+ * open area doubles the number of jets and roughly doubles what gets through, which is a picture
+ * that reads at a glance from across a room — the thing a display piece has to do.
+ *
+ * Worth stating plainly for whoever writes the copy: the *claim* on record is still +30% airflow.
+ * These two numbers are open area, not airflow, and the ratio between the solved throughflows is
+ * larger than 1.3. If a figure ever goes back on screen beside this picture, it should come from
+ * `predict()` and not from reading the chambers.
  */
 export const FABRICS: readonly [FabricSpec, FabricSpec] = [
   {
@@ -77,18 +85,21 @@ export const FABRICS: readonly [FabricSpec, FabricSpec] = [
     name: 'ShowZero',
     tag: '',
     note: 'today’s knit',
-    dia: 0.395,
-    pitch: 2.5,
-    drag: 0.26,
+    /* 30.0% open, solved: 0.595mm holes on a 2.0mm pitch. */
+    dia: 0.595,
+    pitch: 2.0,
+    drag: 0.3,
   },
   {
     id: 'next',
     name: 'ShowZero',
     tag: 'v2',
     note: 'engineered open knit',
-    dia: 0.44,
-    pitch: 2.1,
-    drag: 0.26,
+    /* 60.0% open — the same 2.0mm gauge with the perforation opened to 1.195mm. Same pitch on
+       purpose: one variable between the two chambers, and it is hole size. */
+    dia: 1.195,
+    pitch: 2.0,
+    drag: 0.16,
   },
 ]
 

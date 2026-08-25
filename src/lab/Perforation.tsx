@@ -126,12 +126,14 @@ const SCHEMES: Record<'ember' | 'tide', Scheme> = {
      */
     wind: [
       [0.0, 128, 172, 230],
-      [0.35, 104, 180, 226],
-      [0.6, 88, 192, 206],
+      [0.4, 104, 180, 226],
+      [0.66, 88, 192, 206],
       /* The freestream lands about here — still teal, so green stays the mark of accelerated air. */
-      [0.76, 80, 202, 168],
-      [0.88, 94, 216, 120],
-      [1.0, 160, 238, 104],
+      [0.82, 78, 204, 162],
+      [0.92, 96, 220, 112],
+      /* The jet cores. Brighter and yellower than the last pass: this is the top of the scale and
+         it should look like it. */
+      [1.0, 186, 246, 96],
     ],
   },
 }
@@ -184,15 +186,15 @@ const windRamp = (t: number) => mixStops(PALETTE.wind, t)
  * flow goes that fast. The peak through a perforation is about 1.2× the freestream, so on a 2.3×
  * scale every jet sat mid-ramp and the green end was never reached.
  *
- * **1.35 rather than 1.2, and the ramp is weighted to match.** At 1.2 the freestream itself landed
- * at 0.83 of the scale, which painted the entire approach flow green and left the wake behind the
- * knit blue — true (upstream *is* the fastest broad region, and a resistive membrane decelerates
- * what passes it) but backwards to read: it says the outside air is the story. At 1.35 the
- * freestream lands near 0.74, where the ramp is still teal, so green is reserved for air that has
- * been *accelerated* — the jets squeezing through the perforations, which is the thing worth
- * looking at.
+ * **The freestream must land mid-scale and the jets must reach the top.** At 1.2 the freestream sat
+ * at 0.83, which painted the whole approach flow green and left the wake blue — true (upstream *is*
+ * the fastest broad region, and a resistive membrane decelerates what passes it) but backwards to
+ * read. At 1.35 green went too scarce: with a 60%-open knit the jets are faster than they were, and
+ * they were still stopping short of the top of the ramp. 1.25 puts the freestream near 0.8 — still
+ * teal, because the ramp's green is weighted above that — and lets a jet core actually reach the
+ * bright end, which is where the eye is meant to go.
  */
-const WIND_TOP = 1.35
+const WIND_TOP = 1.25
 
 const windOf = (speed: number, wind: number) => {
   const n = speed / Math.max(1e-4, WIND_TOP * wind)
@@ -500,19 +502,86 @@ export function usePerforation({ channels, pace, layers, showing, reduced }: Opt
       r.hx.putImageData(r.raster, 0, 0)
     }
 
+    /**
+     * The knit, drawn as a perforated sheet.
+     *
+     * **Two wrong versions preceded this one and both failed the same way.** First a flat band plus
+     * one filled rectangle per closed row — a wall of stacked bricks. Then each run of closed cells
+     * as its own rounded capsule, which turned the bricks into a column of floating pills: still a
+     * stack of separate objects, just with the corners off.
+     *
+     * The mistake in both was treating the *solid* as the thing to draw. Fabric is continuous and
+     * the holes are cut through it, so that is the order of operations here: fill the whole band as
+     * one sheet, lay a lit gradient and a fibre texture over it, then punch every perforation out
+     * with `destination-out`. What is left is a membrane with holes in it rather than a pile of
+     * pieces — and the holes round off into the sheet the way a punched hole does.
+     *
+     * Safe on this canvas because the glyph layer is cleared immediately before this runs and drawn
+     * immediately after: the only thing `destination-out` can erase is the sheet itself.
+     *
+     * None of it touches the physics. The membrane the flow meets is `field.perm`, cell by cell, and
+     * the runs below are read from exactly that.
+     */
     const drawMembrane = (r: Runtime, sx: number, sy: number) => {
       const { field, gx } = r
       const x0 = field.band * sx
-      const width = field.thickness * sx
+      const w = field.thickness * sx
+
       gx.globalCompositeOperation = 'source-over'
-      gx.fillStyle = `rgba(${SPECIMEN},0.12)`
-      gx.fillRect(x0, 0, width, r.ch)
-      for (let j = 0; j < field.h; j++) {
-        const closed = 1 - field.perm[field.band + j * field.w]
-        if (closed <= 0.02) continue
-        gx.fillStyle = `rgba(${SPECIMEN},${(0.09 + closed * 0.46).toFixed(3)})`
-        gx.fillRect(x0, j * sy - 0.3, width, sy + 0.6)
+
+      /* Lit across the band: dark at the outside face, brightest just inside it, mid at the skin
+         side. That is a cylinder's shading, and it is what stops the sheet reading as a flat chip. */
+      const lit = gx.createLinearGradient(x0, 0, x0 + w, 0)
+      lit.addColorStop(0, `rgba(${SPECIMEN},0.42)`)
+      lit.addColorStop(0.3, `rgba(${SPECIMEN},0.9)`)
+      lit.addColorStop(0.66, `rgba(${SPECIMEN},0.66)`)
+      lit.addColorStop(1, `rgba(${SPECIMEN},0.46)`)
+      gx.fillStyle = lit
+      gx.fillRect(x0, 0, w, r.ch)
+
+      /* Fibre. Fine cross-channel striations at a hair under a pixel of contrast — deterministic,
+         because a texture that reshuffles every frame reads as static rather than as thread. */
+      const lines = Math.ceil(r.ch / 3)
+      for (let i = 0; i < lines; i++) {
+        const y = i * 3
+        const a = 0.05 + 0.05 * Math.abs(Math.sin(i * 1.7))
+        gx.fillStyle = `rgba(52,48,44,${a.toFixed(3)})`
+        gx.fillRect(x0, y, w, 1)
       }
+
+      /* The perforations, punched. Runs of open cells rather than per-row rectangles, so one hole is
+         one hole — `SOLID_AT`'s threshold in the solver is 0.07 open, and 0.5 here is the midpoint
+         of the supersampled edge, which is where a hole's rim visually is. */
+      const holes: [number, number][] = []
+      let from = -1
+      for (let j2 = 0; j2 < field.h; j2++) {
+        const open = field.perm[field.band + j2 * field.w]
+        const isOpen = open >= 0.5
+        if (isOpen && from < 0) from = j2
+        else if (!isOpen && from >= 0) {
+          holes.push([from, j2])
+          from = -1
+        }
+      }
+      if (from >= 0) holes.push([from, field.h])
+
+      gx.globalCompositeOperation = 'destination-out'
+      gx.fillStyle = '#000'
+      for (const [a, b] of holes) {
+        const y = a * sy
+        const h = (b - a) * sy
+        /* Punched a touch wider than the band so the cut is clean through both faces. */
+        const pad = 1
+        gx.beginPath()
+        if (typeof gx.roundRect === 'function') {
+          gx.roundRect(x0 - pad, y, w + pad * 2, h, Math.min(w * 0.5, h * 0.5))
+        } else {
+          gx.rect(x0 - pad, y, w + pad * 2, h)
+        }
+        gx.fill()
+      }
+
+      gx.globalCompositeOperation = 'source-over'
     }
 
     const drawGlyphs = (r: Runtime) => {
