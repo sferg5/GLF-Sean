@@ -213,6 +213,21 @@ export type Field = {
   /** Mean open fraction across the band — the knit's open area as solved, not as specified. */
   porosity: number
   wind: number
+  /**
+   * How unsteady the wake is, 1 being the tuned value and 0 a laminar jet.
+   *
+   * **It scales the two terms that live downstream of the knit and nothing else.** The trip aft of
+   * the membrane seeds the shear layer's roll-up, and vorticity confinement is what keeps the
+   * resulting eddies from being eaten by semi-Lagrangian advection; they are one mechanism in two
+   * halves, so a knob that moved only one of them would either seed swirl that immediately died or
+   * sustain swirl that never started.
+   *
+   * The inflow perturbation is deliberately *not* on this dial. Roughening the approach flow makes
+   * the whole channel noisy, and an approach flow that arrives already turbulent has nothing to say
+   * about what the fabric did to it — the same reason `confine` refuses to touch anything upstream
+   * of the band.
+   */
+  turbulence: number
   drag: number
   /** Step counter. Drives the inflow perturbation, and nothing reads a random number. */
   tick: number
@@ -255,6 +270,7 @@ export function createField(aspect: number): Field {
     skin: Math.round(w * (1 - SKIN_BAND)),
     porosity: 1,
     wind: 1.2,
+    turbulence: 1,
     drag: 0.19,
     tick: 0,
   }
@@ -600,7 +616,12 @@ export function step(f: Field, stir: Stir): void {
   }
 
   /* A trip just aft of the knit. Perforated plates do shed unsteadily, and at this grid spacing a
-     two-cell jet has no room to roll up on its own. */
+     two-cell jet has no room to roll up on its own. Clamped rather than trusted: `turbulence` comes
+     from a slider, and confinement adds energy to the field — it is the one term here that can run
+     away if it is handed a number nobody checked. */
+  const swirl = Number.isFinite(f.turbulence)
+    ? Math.max(0, Math.min(2, f.turbulence))
+    : 1
   const trip = f.band + f.thickness + 1
   for (let j = 2; j < h - 2; j++) {
     const k = trip + j * w
@@ -608,6 +629,7 @@ export function step(f: Field, stir: Stir): void {
     v[k] +=
       (Math.sin(j * 0.74 + f.tick * 0.055) + Math.sin(j * 0.23 - f.tick * 0.037) * 0.85) *
       0.03 *
+      swirl *
       f.wind
   }
 
@@ -621,7 +643,7 @@ export function step(f: Field, stir: Stir): void {
   advect(f, v, v0, false)
 
   resist(f)
-  confine(f, 0.125)
+  confine(f, 0.125 * swirl)
   bounds(f)
   project(f)
   bounds(f)

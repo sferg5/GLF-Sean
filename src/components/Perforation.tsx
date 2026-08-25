@@ -65,9 +65,17 @@ export function Perforation() {
    * **Density is a display control, not a model one.** It multiplies how many tracers sample the
    * flow; the flow is identical at either end of it. Worth being clear about, because it looks like
    * a physics control and is not: turning it down does not mean less air.
+   *
+   * **Swirl is the opposite — it is entirely a model control.** It scales the trip aft of the knit
+   * and the vorticity confinement that sustains what the trip starts, so at 0 the jets leave the
+   * perforations as straight threads and at 2 they roll up hard. It changes the solve, and it
+   * changes it identically in both channels, which is what keeps the comparison honest at any
+   * setting. What it does *not* touch is the approach flow: a channel that arrives turbulent has
+   * nothing to say about what the fabric did to it.
    */
   const [pace, setPace] = useState(PACE.ref)
   const [density, setDensity] = useState(1)
+  const [swirl, setSwirl] = useState(1)
 
 
 
@@ -83,6 +91,8 @@ export function Perforation() {
   paceRef.current = pace
   const densityRef = useRef(density)
   densityRef.current = density
+  const swirlRef = useRef(swirl)
+  swirlRef.current = swirl
   const layerRef = useRef(layers)
   layerRef.current = layers
 
@@ -114,6 +124,7 @@ export function Perforation() {
     channels,
     pace: paceRef,
     density: densityRef,
+    swirl: swirlRef,
     layers: layerRef,
     showing,
     reduced,
@@ -199,6 +210,15 @@ export function Perforation() {
             step={0.05}
             onChange={setDensity}
             read={`${Math.round(density * 100)}%`}
+          />
+          <Dial
+            label="swirl"
+            value={swirl}
+            min={0}
+            max={2}
+            step={0.05}
+            onChange={setSwirl}
+            read={swirl === 0 ? 'straight' : `${Math.round(swirl * 100)}%`}
           />
         </div>
       </div>

@@ -3,6 +3,7 @@ import {
   type FabricSpec,
   type Field,
   HOT,
+  PACE,
   type Stir,
   buildMembrane,
   createField,
@@ -699,6 +700,14 @@ type Options = {
    * number, so the comparison survives any setting of it.
    */
   density: React.RefObject<number>
+  /**
+   * The reader's wake dial, 1 being the tuned value and 0 a laminar jet.
+   *
+   * Written onto both fields at the top of every step, next to `wind`, for the same reason: it is a
+   * property of the solve rather than of the drawing, and both channels must always take the same
+   * one or the comparison stops being controlled.
+   */
+  swirl: React.RefObject<number>
   layers: React.RefObject<Layers>
   showing: boolean
   reduced: boolean
@@ -746,6 +755,7 @@ export function usePerforation({
   channels,
   pace,
   density,
+  swirl,
   layers,
   showing,
   reduced,
@@ -765,6 +775,22 @@ export function usePerforation({
     let live = COUNT
 
     /**
+     * Read one of the reader's dials, safely.
+     *
+     * **Every value in this loop that a control can move comes through here.** A headless sweep of
+     * the swirl dial found that the clamps guarding it were `Math.max(0, Math.min(2, x))`, which
+     * passes `NaN` straight through — and a single `NaN` entering the velocity field propagates to
+     * every cell within one advection and never leaves, because there is no term that can turn it
+     * back into a number. The field is dead until the next resize. Nothing in the UI can produce a
+     * `NaN` today; the point is that it costs one function for that to stop mattering, and the
+     * failure it prevents is silent and total rather than loud and local.
+     */
+    const dial = (ref: React.RefObject<number>, fallback: number, lo: number, hi: number) => {
+      const v = ref.current
+      return typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : fallback
+    }
+
+    /**
      * How many tracers a channel carries this frame.
      *
      * Three terms: the governor's `live`, the channel's area scale, and the reader's multiplier.
@@ -774,7 +800,7 @@ export function usePerforation({
      * never stepped. Clamped to `COUNT` because that is the length of the swarm's arrays.
      */
     const population = (r: Runtime) =>
-      Math.min(COUNT, Math.round(live * r.area * Math.max(0.05, density.current ?? 1)))
+      Math.min(COUNT, Math.round(live * r.area * dial(density, 1, 0.05, 4)))
 
     const build = (): boolean => {
       for (const ch of channels) {
@@ -1082,9 +1108,10 @@ export function usePerforation({
     }
 
     const advance = () => {
-      const wind = windFor(pace.current)
+      const wind = windFor(dial(pace, PACE.ref, PACE.min, PACE.max))
       for (const r of runtimes) {
         r.field.wind = wind
+        r.field.turbulence = dial(swirl, 1, 0, 2)
         const s = r.stir
         const push: Stir = s.on
           ? { x: s.x, y: s.y, dx: (s.x - s.px) * 0.9, dy: (s.y - s.py) * 0.9 }
@@ -1160,7 +1187,8 @@ export function usePerforation({
       window.removeEventListener('resize', onResize)
       teardown()
     }
-    /* `pace`, `density` and `layers` are refs by design — they must not restart the fields. */
+    /* `pace`, `density`, `swirl` and `layers` are refs by design — they must not restart the
+       fields. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showing, reduced, channels, pace, density, layers])
+  }, [showing, reduced, channels, pace, density, swirl, layers])
 }
