@@ -77,6 +77,22 @@ export function Perforation() {
   const [density, setDensity] = useState(1)
   const [swirl, setSwirl] = useState(1)
 
+  /**
+   * The two that shape the drawing rather than the flow.
+   *
+   * Both run 0–1 with right meaning more of what the label says, and the inversion each one needs
+   * underneath — a longer trail is a smaller fade, more green is a lower break point — lives in
+   * `lab/Perforation.tsx` beside the constants it inverts. Neither touches the solve, so no setting
+   * of either can make the two channels disagree about anything.
+   *
+   * The defaults are the tuned constants: 0.5 is the 4.5%-a-frame fade the streaklines were built
+   * on, and 0.68 is `WIND_TOP` at 1.25 — the value that took two rounds of \"green is missing\" and
+   * \"green is in the wrong place\" to find, and which is now something to move rather than something
+   * to ask for.
+   */
+  const [trail, setTrail] = useState(0.5)
+  const [green, setGreen] = useState(0.68)
+
 
 
   /** Measured and committed, not read live — see the note on `CURVE` in `lib/perforation.ts`. */
@@ -93,6 +109,10 @@ export function Perforation() {
   densityRef.current = density
   const swirlRef = useRef(swirl)
   swirlRef.current = swirl
+  const trailRef = useRef(trail)
+  trailRef.current = trail
+  const greenRef = useRef(green)
+  greenRef.current = green
   const layerRef = useRef(layers)
   layerRef.current = layers
 
@@ -125,6 +145,8 @@ export function Perforation() {
     pace: paceRef,
     density: densityRef,
     swirl: swirlRef,
+    trail: trailRef,
+    green: greenRef,
     layers: layerRef,
     showing,
     reduced,
@@ -219,6 +241,24 @@ export function Perforation() {
             step={0.05}
             onChange={setSwirl}
             read={swirl === 0 ? 'straight' : `${Math.round(swirl * 100)}%`}
+          />
+          <Dial
+            label="trail"
+            value={trail}
+            min={0}
+            max={1}
+            step={0.02}
+            onChange={setTrail}
+            read={`${Math.round(trail * 100)}%`}
+          />
+          <Dial
+            label="green"
+            value={green}
+            min={0}
+            max={1}
+            step={0.02}
+            onChange={setGreen}
+            read={`${Math.round(green * 100)}%`}
           />
         </div>
       </div>

@@ -195,12 +195,32 @@ const windRamp = (t: number) => mixStops(PALETTE.wind, t)
  * teal, because the ramp's green is weighted above that — and lets a jet core actually reach the
  * bright end, which is where the eye is meant to go.
  */
-const WIND_TOP = 1.25
 
-const windOf = (speed: number, wind: number) => {
-  const n = speed / Math.max(1e-4, WIND_TOP * wind)
+const windOf = (speed: number, wind: number, top: number) => {
+  const n = speed / Math.max(1e-4, top * wind)
   return n < 0 ? 0 : n > 1 ? 1 : n
 }
+
+/**
+ * The two dials that shape the drawing rather than the flow, and the curves they ride.
+ *
+ * Both are exposed as 0–1 with **right meaning more of the thing the label names**, which is not
+ * how either constant behaves underneath: a longer trail is a *smaller* fade, and more green is a
+ * *lower* break point. Inverting them here rather than in the panel keeps the inversion next to the
+ * reason for it, and means the label can never drift out of step with the direction of travel.
+ *
+ * Trail rides a geometric curve because persistence is multiplicative — a buffer fading 4% a frame
+ * and one fading 8% are a factor apart, not four points, so a linear slider would spend most of its
+ * travel in the short-trail end where the differences are invisible.
+ */
+const TRAIL_FAST = 0.16
+const TRAIL_SLOW = 0.012
+const fadeFor = (t: number) => TRAIL_FAST * Math.pow(TRAIL_SLOW / TRAIL_FAST, t)
+
+/** Green everywhere at 1, green only in the jet cores at 0. The tuned midpoint, 1.25, is 0.68. */
+const GREEN_LATE = 2.2
+const GREEN_EARLY = 0.8
+const topFor = (g: number) => GREEN_LATE - (GREEN_LATE - GREEN_EARLY) * g
 
 /**
  * Quantisation: the number of `fillStyle` changes a frame costs, not a number of colours.
@@ -708,6 +728,10 @@ type Options = {
    * one or the comparison stops being controlled.
    */
   swirl: React.RefObject<number>
+  /** Streakline persistence, 0–1, 1 being the longest threads. Drawing only. */
+  trail: React.RefObject<number>
+  /** Where green starts on the speed scale, 0–1, 1 being the earliest. Drawing only. */
+  green: React.RefObject<number>
   layers: React.RefObject<Layers>
   showing: boolean
   reduced: boolean
@@ -756,6 +780,8 @@ export function usePerforation({
   pace,
   density,
   swirl,
+  trail,
+  green,
   layers,
   showing,
   reduced,
@@ -998,7 +1024,7 @@ export function usePerforation({
             const q = Math.round(Math.atan2(vv, uu) / (Math.PI / 4))
             g = ((q % 4) + 4) % 4
           }
-          const bi = Math.min(B - 1, (windOf(raw, field.wind) * (B - 1)) | 0)
+          const bi = Math.min(B - 1, (windOf(raw, field.wind, topFor(dial(green, 0.68, 0, 1))) * (B - 1)) | 0)
           bins[bi][g].push(cx, cy, sp)
         }
       }
@@ -1026,10 +1052,12 @@ export function usePerforation({
       const lo = 0.06 * field.wind
       const hi = 2.3 * field.wind
       const span = Math.max(1e-4, hi - lo)
+      /* Hoisted out of the per-tracer loop: this is read four thousand times a frame. */
+      const top = topFor(dial(green, 0.68, 0, 1))
 
       r.tx.setTransform(1, 0, 0, 1, 0, 0)
       r.tx.globalCompositeOperation = 'destination-out'
-      r.tx.fillStyle = 'rgba(0,0,0,0.045)'
+      r.tx.fillStyle = `rgba(0,0,0,${fadeFor(dial(trail, 0.5, 0, 1)).toFixed(4)})`
       r.tx.fillRect(0, 0, r.trail.width, r.trail.height)
       r.tx.setTransform(dprFlow, 0, 0, dprFlow, 0, 0)
       r.tx.globalCompositeOperation = 'lighter'
@@ -1045,7 +1073,7 @@ export function usePerforation({
         const raw = sample(field, field.spd, x, y)
         let sp = (raw - lo) / span
         sp = sp < 0 ? 0 : sp > 1 ? 1 : sp
-        const bi = Math.min(BINS - 1, (windOf(raw, field.wind) * (BINS - 1)) | 0)
+        const bi = Math.min(BINS - 1, (windOf(raw, field.wind, top) * (BINS - 1)) | 0)
         buckets[bi].push(x * sx, y * sy, sp)
       }
       for (let b = 0; b < BINS; b++) {
@@ -1187,8 +1215,7 @@ export function usePerforation({
       window.removeEventListener('resize', onResize)
       teardown()
     }
-    /* `pace`, `density`, `swirl` and `layers` are refs by design — they must not restart the
-       fields. */
+    /* Every dial is a ref by design — none of them may restart the fields. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showing, reduced, channels, pace, density, swirl, layers])
+  }, [showing, reduced, channels, pace, density, swirl, trail, green, layers])
 }
