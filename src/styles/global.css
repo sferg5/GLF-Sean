@@ -4013,7 +4013,10 @@ button {
      the space instead of leaving a band of page under them. */
   height: 100dvh;
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  /* Two chambers and the band between them. `auto` rather than a third fraction: the band is as
+     tall as its line plus its padding and not a row of the layout — every pixel it doesn't need
+     belongs to the pictures. */
+  grid-template-rows: 1fr auto 1fr;
   overflow: hidden;
   background: var(--tunnel-ground, #0e1028);
 }
@@ -4031,7 +4034,12 @@ button {
   left: clamp(20px, 4vw, 72px);
   z-index: 1;
   margin: 0;
-  font-size: clamp(0.88rem, 1.05vw, 1.05rem);
+  /* The subheader's size and leading — `.sz__lede`, the line that carries the claim under a
+     headline. It was a caption before, and a caption is what you put on a picture you are
+     explaining; this is the name of the thing on screen. Capitals kept: ShowZero is a wordmark,
+     and this is a `<p>` rather than an `h1–h4`, so the base rule's `lowercase` doesn't reach it. */
+  font-size: clamp(1rem, 1.25vw, 1.2rem);
+  line-height: 1.45;
   font-weight: var(--weight-heading);
   color: #fff;
   text-shadow: 0 1px 4px rgba(6, 8, 24, 0.9);
@@ -4042,58 +4050,31 @@ button {
   font-style: normal;
 }
 
-/* The one instruction, on the top chamber only — repeated under both it would be furniture. It
-   goes as soon as it has been obeyed. */
-.tunnel__hint {
-  position: absolute;
-  inset: auto clamp(20px, 4vw, 72px) clamp(10px, 1.8svh, 18px) auto;
-  z-index: 1;
-  margin: 0;
-  font-size: clamp(0.78rem, 0.9vw, 0.9rem);
-  color: rgba(255, 255, 255, 0.4);
-  text-shadow: 0 1px 4px rgba(6, 8, 24, 0.9);
-  pointer-events: none;
-  transition: opacity 0.45s var(--ease-out-quad);
-}
+/* The band between the chambers
+   It replaces a hairline that was only ever keeping the two fields from bleeding together, and it
+   does that job better: a true black band is the one value on this screen that reads as a frame
+   edge rather than as more sky, so the chambers stay two pictures instead of one tall one.
 
-.tunnel__window[data-stirred='true'] .tunnel__hint {
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tunnel__hint {
-    display: none;
-  }
-}
-
-/* The axis, inside the window
-   Three marks in white along the top of the picture, on the same treatment as the knit's name in
-   the corner below them — a shadow rather than a scrim, so they only darken what is directly
-   under a glyph.
+   The type is the page's headline treatment — the tight tracking and the heading weight off
+   `.sz__title` — at a size that belongs in a band rather than at the top of a page. The hero's
+   3.2rem here would be a third picture; what carries over is the voice, not the scale.
    ------------------------------------------------------------------ */
 
-.tunnel__mark {
-  position: absolute;
-  top: clamp(10px, 1.6svh, 16px);
-  z-index: 1;
-  font-size: clamp(0.78rem, 0.9vw, 0.9rem);
-  color: rgba(255, 255, 255, 0.66);
-  text-shadow: 0 1px 4px rgba(20, 20, 24, 0.85);
-  white-space: nowrap;
+.tunnel__seam {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: clamp(10px, 1.6svh, 18px) 20px;
+  background: #000;
+  font-size: clamp(1.05rem, 1.7vw, 1.6rem);
+  font-weight: var(--weight-heading);
+  line-height: 1.1;
+  letter-spacing: -0.021em;
+  color: #fff;
+  text-align: center;
+  /* It's an instruction about the pictures, not a control — the drag happens in the window. */
   pointer-events: none;
-}
-
-.tunnel__mark[data-align='centre'] {
-  translate: -50% 0;
-}
-
-.tunnel__mark[data-align='start'] {
-  left: clamp(20px, 4vw, 72px);
-}
-
-/* Stepped in past the expand button, which owns the true corner. */
-.tunnel__mark[data-align='end'] {
-  right: calc(clamp(20px, 4vw, 72px) + 46px);
+  user-select: none;
 }
 
 /* The chambers
@@ -4118,12 +4099,6 @@ button {
      or scroll the page out from under the gesture. */
   touch-action: none;
   user-select: none;
-}
-
-/* The seam. A hairline rather than a gap: the two chambers are one instrument, and page between
-   them would be exactly the white space this layout exists to remove. */
-.tunnel__channel + .tunnel__channel .tunnel__window {
-  border-top: 1px solid rgba(226, 221, 210, 0.16);
 }
 
 .tunnel__canvas {
@@ -4242,26 +4217,9 @@ button {
   border: 0;
 }
 
-@media (max-width: 760px) {
-  .tunnel__controls {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-
-}
-
-/* The still frame is a legitimate rendering of this section — it is a cross-section diagram
-   either way — so reduced motion keeps the picture and drops the loop, which `lab/Perforation.tsx`
-   does. All that's left here is the hint, which invites a gesture nobody is being offered. */
-@media (prefers-reduced-motion: reduce) {
-  .tunnel__fab {
-    transition: none;
-  }
-
-  .tunnel__hint {
-    display: none;
-  }
-}
+/* The still frame is a legitimate rendering of this section — it is a cross-section diagram either
+   way — so reduced motion keeps the picture and drops the loop, which `lab/Perforation.tsx` does.
+   The band stays: it says to touch the picture, and a still picture is still worth touching. */
 
 /* The chunk boundary
    What stands in for the show-zero page while its bundle arrives. The page's own wall, at the

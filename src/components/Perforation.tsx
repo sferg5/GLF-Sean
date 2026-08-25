@@ -34,23 +34,6 @@ import { FABRICS, PACE, WALL, porosityOf, predict } from '../lib/perforation'
  * without someone who owns the actual knit reading it first.
  */
 
-/**
- * The axis, said once for both channels.
- *
- * Both channels are the same geometry, so naming it twice would be labelling the picture rather
- * than the diagram. The same `WALL` as the moisture bench test upstairs, deliberately: a reader who
- * has seen one cross-section on this page already knows which end is the skin.
- *
- * Three marks rather than two. Naming only the outside left the far edge to be inferred, and the
- * whole reading of the section turns on knowing that the air on the right is the air held against
- * you — the microclimate is the subject, so it gets a name.
- */
-const MARKS = [
-  { at: 0, label: 'outside air', align: 'start' },
-  { at: WALL, label: 'the knit', align: 'centre' },
-  { at: 1, label: 'inside air', align: 'end' },
-] as const
-
 export function Perforation() {
   const section = useRef<HTMLElement>(null)
   const reduced = !!useReducedMotion()
@@ -175,10 +158,19 @@ export function Perforation() {
         spec={FABRICS[0]}
         flow={nowFlow}
         glyph={nowGlyph}
-        marks
-        hint="drag inside to disturb the flow"
         onFallbackFull={setFallbackFull}
       />
+
+      {/* The seam, said out loud.
+
+          A hairline used to sit here doing nothing but keeping the two pictures from bleeding into
+          each other. It now carries the one instruction, which is the only thing on this screen
+          that isn't a picture or a name — and putting it in the join rather than in a corner of the
+          top chamber makes it read as addressed to both of them, which it is. Black rather than the
+          ground colour: a true black band is the one value that reads as a frame edge instead of as
+          more sky, so the two fields stay separate pictures. */}
+      <p className="tunnel__seam">touch to direct the air flow</p>
+
       <Channel
         spec={FABRICS[1]}
         flow={nextFlow}
@@ -188,14 +180,15 @@ export function Perforation() {
 
         {/* Everything on this screen that is a picture, said once in words. */}
         <p className="tunnel__sr">
-One cross-section of the ShowZero knit in a wind tunnel, outside air on the left and skin
-          on the right, with the knit standing across the channel a third of the way in. A switch
-          above the picture chooses between today's knit and showzero v2, and colour is air
-          temperature — the body warms the air held against the skin, and airflow through the knit
-          carries that warmth away. One thing is known about v2: it moves 30% more air through the
-          knit, and the two simulations are tuned so their solved airflow differs by exactly that.
-          Everything else in the picture is illustrative rather than measured.
-      </p>
+          Two cross-sections of a knit in a wind tunnel, one above the other, outside air on the
+          left and skin on the right, with the knit standing across the middle of each channel. The
+          top channel is ShowZero and the bottom is ShowZero v2; colour is air speed, brightening
+          from pale blue in the slow air to green where the flow is fastest. One thing is known
+          about v2: it moves 30% more air through the knit, and the two simulations are tuned so
+          their solved airflow differs by exactly that. Dragging inside either picture pushes the
+          air in that channel. Everything else in the pictures is illustrative rather than
+          measured.
+        </p>
     </section>
   )
 }
@@ -212,17 +205,11 @@ function Channel({
   spec,
   flow,
   glyph,
-  marks,
-  hint,
   onFallbackFull,
 }: {
   spec: (typeof FABRICS)[number]
   flow: React.RefObject<HTMLCanvasElement | null>
   glyph: React.RefObject<HTMLCanvasElement | null>
-  /** The axis, on the top chamber only — both are the same geometry, so naming it twice would be
-   * labelling the picture rather than the diagram. */
-  marks?: boolean
-  hint?: string
   /** Reports CSS-overlay fullscreen up to the parent, which gates the loop on it. */
   onFallbackFull: (on: boolean) => void
 }) {
@@ -290,25 +277,6 @@ function Channel({
       <div className="tunnel__window" ref={host} data-full={fallback || undefined}>
         <canvas className="tunnel__canvas" ref={flow} aria-hidden="true" />
         <canvas className="tunnel__canvas" ref={glyph} aria-hidden="true" />
-        {/* The axis, inside the picture it labels — white over the field, like the knit's name.
-            The right mark steps in past the expand button's corner. */}
-        {marks &&
-          MARKS.map((mark) => (
-            <span
-              key={mark.label}
-              className="tunnel__mark"
-              data-align={mark.align}
-              style={mark.align === 'centre' ? { left: `${mark.at * 100}%` } : undefined}
-              aria-hidden="true"
-            >
-              {mark.label}
-            </span>
-          ))}
-        {hint && (
-          <p className="tunnel__hint" aria-hidden="true">
-            {hint}
-          </p>
-        )}
         {/* Which chamber is which. The only thing telling them apart now that both are on screen. */}
         <p className="tunnel__knit">
           {spec.name}
