@@ -45,13 +45,13 @@
      product is the argument: a frame with a claim across the top is a poster,
      and this is meant to be the thing itself. */
   .mark{position:fixed;left:50%;translate:-50% 0;top:clamp(20px,2.8vh,32px);z-index:14;
-    font-family:var(--sans);font-weight:800;font-size:21px;
+    font-family:var(--sans);font-weight:var(--weight-body);font-size:21px;
     font-style:italic;text-transform:lowercase;
     letter-spacing:.005em;color:var(--ink);pointer-events:none;user-select:none;
     white-space:nowrap}
-  /* Weight does the separating, as the family sets a wordmark — but these are
-     three words rather than one compound, so the space between them stays. */
-  .mark i{font-weight:var(--weight-body);opacity:1}
+  /* One weight throughout now — the emphasis on the first word is gone, so the
+     tag exists only to keep the markup's shape. */
+  .mark i{font-weight:inherit;opacity:1}
 
   /* ---- leader-line call-outs ----
      A ring on the thing and one hairline out to the name. The shelf under the
