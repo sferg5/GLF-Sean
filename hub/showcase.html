@@ -63,7 +63,12 @@
   .callouts{position:fixed;inset:0;z-index:10;pointer-events:none;overflow:visible}
   .callouts line{stroke:var(--ink);fill:none;vector-effect:non-scaling-stroke}
   .callouts line{stroke-width:1}
-  .callouts text{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;
+  /* Saans, the same face the wordmark is set in. It was the mono, which made
+     the labels a second voice on a page that only has one thing to say; the
+     tracking comes down a little with it, because a proportional face does not
+     need the space a monospace was asking for. */
+  .callouts text{font-family:var(--sans);font-weight:var(--weight-body);
+    font-size:11px;letter-spacing:.12em;
     text-transform:uppercase;fill:var(--ink);
     paint-order:stroke fill;stroke:var(--halo);stroke-width:3px;stroke-linejoin:round}
   .callouts polygon{fill:var(--ink);stroke:none}
@@ -113,7 +118,8 @@
      the type the call-outs use, quiet enough to be read past; below it they
      hang under the control where a caption goes. */
   .hint{position:absolute;pointer-events:none;user-select:none;
-    font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;
+    font-family:var(--sans);font-weight:var(--weight-body);
+    font-size:11px;letter-spacing:.12em;
     text-transform:uppercase;color:var(--dim);white-space:nowrap;
     transition:opacity .3s var(--ease-out-quad)}
   /* Both placements take the page's own ink. The track is dark and stays dark,
